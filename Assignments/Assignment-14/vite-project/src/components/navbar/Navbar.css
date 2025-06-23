@@ -1,0 +1,187 @@
+ul{
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+
+}
+.fb-navbar {
+    display: flex;
+    align-items: center;
+    padding: 6px 14px;
+    background-color: #ffffff;
+    left: 0;
+    right: 0;
+    position: fixed;
+    box-shadow: 0px 2px 2px 0px rgba(0, 0, 0, 0.1);
+    z-index: 150;
+    height: 44px;
+    top: 0;
+}
+
+.navbar-link {
+    text-decoration: none;
+  
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+
+
+.navbar-item {
+    text-decoration: none;
+    transition: color 0.3s ease;
+    list-style: none;
+    position: relative;
+}
+
+.navbar-item.active .navbar-link::after {
+  
+    content: "";
+    display: block;
+    width: 100%;  /* same as icon width */
+    height: 3px;
+    background-color: #0866ff;
+    position: absolute;
+   
+    top: 37px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 10px;
+  }
+
+
+.fb-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 36px;
+}
+
+.fb-logo {
+    width: 44px;
+    height: 40px;
+}
+
+.fb-search {
+    background: #f0f2f5;
+    border: none;
+    border-radius: 20px;
+    width: 239px;
+    font-size: 14px;
+    outline: none;
+    height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.fb-search-input {
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 190px;
+    height: 25px;
+    font-size: 15px;
+    margin-left: 6px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.fb-search-icon {
+    margin-left: 11px;
+    margin-top: 4px;
+    filter: invert(40%);
+}
+
+
+
+
+
+
+.fb-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: absolute;
+    right: 30px;
+}
+
+.fb-icon-circle {
+  width: 10px;
+    background: #505152;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.fb-icon-circle img {
+    width: 20px;
+    height: 20px;
+}
+
+
+
+
+
+.fb-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 110px;
+    height: 48px;
+    border-radius: 6px;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+  
+}
+
+li:hover {
+    background-color: #f7f6f6;
+}
+
+.nav-img{
+  margin-left: 40px;
+  margin-right: 40px;
+    filter: invert(40%);
+}
+.navbar-item .fb-icon {
+ 
+  -webkit-mask-size: cover;
+  mask-size: cover;
+}
+
+.navbar-item.active .fb-icon1 {
+mask: cover;
+mask: url(../../assets/Homemask.svg);
+background-color: #0866ff;
+mask-repeat: no-repeat;
+filter: invert(26%) sepia(97%) saturate(4097%) hue-rotate(206deg) brightness(91%) contrast(104%);
+mask-position: center;}
+.navbar-item.active .fb-icon2 {
+mask: cover;
+mask: url(../../assets/Freindsmask.svg);
+background-color: #0866ff;
+mask-repeat: no-repeat;
+filter: invert(26%) sepia(97%) saturate(4097%) hue-rotate(206deg) brightness(91%) contrast(104%);
+mask-position: center;}
+
+.navbar-item.active .fb-icon3 {
+mask: cover;
+mask: url(../../assets/videosmask.svg);
+background-color: #0866ff;
+mask-repeat: no-repeat;
+filter: invert(26%) sepia(97%) saturate(4097%) hue-rotate(206deg) brightness(91%) contrast(104%);
+mask-position: center;}
+
+.navbar-item.active .fb-icon4 {
+mask: cover;
+mask: url(../../assets/groupsmask.svg);
+background-color: #0866ff;
+mask-repeat: no-repeat;
+filter: invert(26%) sepia(97%) saturate(4097%) hue-rotate(206deg) brightness(91%) contrast(104%);
+mask-position: center;}
+.navbar-item.active .fb-icon5 {
+mask: cover;
+mask: url(../../assets/gamingmask.svg);
+background-color: #0866ff;
+mask-repeat: no-repeat;
+filter: invert(26%) sepia(97%) saturate(4097%) hue-rotate(206deg) brightness(91%) contrast(104%);
+mask-position: center;}

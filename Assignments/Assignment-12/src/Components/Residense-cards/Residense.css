@@ -1,0 +1,38 @@
+.Residence-img{
+   width: 300px;
+}
+
+.residense-list{
+   display: flex;
+   justify-content: center;
+   gap: 15px;
+   line-height: 25px;
+}
+.Residense-h4{
+   color: #fff;
+}
+.Residense-p{
+   color: #D6D6D6;
+font-size: 12px;
+}
+.vector{
+   color: #fff;
+   display: flex;
+margin-top: 10px;
+   gap: 4px;
+}
+.vector-p{
+   font-size: 12px;
+}
+.Residence-vector{
+   width: 20px;
+   height: 15px;
+   margin-top: 4px;
+  
+}
+.bath{
+   margin-left: 30px;
+}
+.square{
+   margin-left: 30px;
+}

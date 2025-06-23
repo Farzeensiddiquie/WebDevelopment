@@ -1,0 +1,30 @@
+.Benefits-list {
+    margin-top: 40px;
+
+height: 380px;
+}
+.Benefits-item {
+  width: 335px;
+  
+  background-color:#121b25;
+}
+.Benefits-p {
+  color: #d6d6d6;
+  font-size: 12px;
+  line-height: 20px;
+}
+.Benefits-h4 {
+  color: #fff;
+  margin-bottom: 10px;
+  margin-top: 15px;
+}
+.Benefits-section {
+    display: flex;
+  text-align: center;
+   align-items: center;
+  justify-content: center;
+  line-height: 20px;
+  background-image: url(/Images/benefits-arrow-pattern.png);
+  background-size: 150px;
+background-repeat: no-repeat;
+}

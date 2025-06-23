@@ -1,0 +1,34 @@
+.StorySectionContainer{
+    width: 480px;
+    height: auto;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    margin: 15px auto;
+padding: 10px;    
+    position: relative;
+}
+.storySectionHeading{
+    
+font-size: 17px;
+font-weight: 600;
+color:#080809;
+}
+.storySection-p{
+    font-size:15 ;
+    font-weight:400 ;
+color:#65686C;
+}
+.storySection{
+    display: flex;
+align-items: center;
+}
+.storyimg{
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+.storySectionText{
+    margin-left: 10px;
+    line-height: 5px;
+}

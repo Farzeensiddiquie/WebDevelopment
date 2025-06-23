@@ -1,0 +1,68 @@
+.copyrightlinks{
+  margin-left: 10px;
+font-size: 13px;
+font-weight: 600;
+color:#65686C;
+}
+.sidebar-shortcuts-title{
+ color: #4d4d4dde;
+ margin-left: 10px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.sidebar-shortcuts{
+  display: flex;
+  align-items: center;
+  height: 25px;
+}
+.sidebar-shortcuts img{
+  width: 28px;
+  height: 28px;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+.left-sidebar{
+left: 0;
+top: 57px;
+position: fixed;
+    background-color:#f2f4f7;
+    width: 304px;
+    height: 90vh;
+    transition: overflow 0.2s ease;
+    overflow: hidden;
+}
+.leftsidebarContent {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto; 
+    scrollbar-width: none;
+  }
+  
+ 
+  .leftsidebarContent::-webkit-scrollbar {
+    width: 9px;
+    background-color: transparent;
+  }
+  
+  .leftsidebarContent::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 10px;
+  }
+  
+  .left-sidebar:hover .leftsidebarContent::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+  
+  .left-sidebar:hover .leftsidebarContent::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .leftsidebarContent {
+    scrollbar-color: transparent transparent;
+  }
+  
+  .left-sidebar:hover .leftsidebarContent {
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    scrollbar-width:thin;
+  }
+  

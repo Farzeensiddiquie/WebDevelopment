@@ -1,0 +1,23 @@
+h1{
+    background-color: aqua;
+}
+p{
+    background-color: burlywood;
+}
+table{
+    width: 100%;
+}
+td,th{
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+#th1{
+    background-color:cadetblue;
+}
+#th2{
+    background-color: aquamarine;
+}
+#th3{
+    background-color: burlywood;
+}

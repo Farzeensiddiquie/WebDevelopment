@@ -1,0 +1,121 @@
+.RightSidebar{
+    right: 0;
+    width: 304px;
+    top: 57px;
+    background-color:#f2f4f7;
+    position: fixed;
+height: 90vh;
+transition: overflow 0.2s ease;
+overflow-y: auto;
+z-index: 1000;
+padding-right: 10px;
+
+} 
+.RightSidebarContent {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto; 
+  scrollbar-width: none;
+}
+
+
+.RightSidebarContent::-webkit-scrollbar {
+  width: 9px;
+  background-color: transparent;
+}
+
+.RightSidebarContent::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 10px;
+}
+
+.RightSidebar:hover .RightSidebarContent::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.RightSidebar:hover .RightSidebarContent::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.RightSidebarContent {
+  scrollbar-color: transparent transparent;
+}
+
+.RightSidebar:hover .RightSidebarContent {
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-width:thin;
+}
+
+.sponsored-h{ 
+  margin-top: 21px;
+  color: #4d4d4dde;
+  font-size: 17px;
+   font-weight: 600;
+  }
+  .contacts-h{
+    margin-top: 15px;
+  color: #4d4d4dde;
+  font-size: 17px;
+   font-weight: 600;
+   margin-bottom: 2px;
+  }
+  .sponsored{
+    margin-left: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #d0d3d7;
+  }
+  .domain{
+    margin-top: 2px;
+    font-size: 13px;
+    color: #65686C;
+  }
+  .info{
+color:#080809;
+font-size: 15px;
+font-weight: 500; 
+margin-bottom: 3px;
+}
+.info1{
+  display: flex;
+}
+.info2{
+  display: flex;
+  margin-top: 20px;
+}
+.info-details{
+  margin-left: 10px;
+}
+.contacts-searchMenu{
+  display: flex;
+  margin-left: 15px;
+  align-items: center;
+  justify-content: space-between;
+}
+.contacts-search{
+  display: flex;
+  gap: 30px;
+  padding-top: 15px;
+  align-items: center;
+  margin-right: 10px;
+  filter: invert(40%);
+}
+.contact{
+  display: flex;
+  align-items: center;
+  margin-left: 15px;
+}
+.contactInfo{
+  color: #080809;
+    font-size: 15px;
+    font-weight: 500;
+    margin-left: 10px;
+}
+.contact:hover{
+  background-color: #e4e6eb;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.contacts{
+  border-bottom:1px solid #d0d3d7 ;
+  margin-left: 15px;
+}

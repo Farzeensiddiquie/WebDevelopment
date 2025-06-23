@@ -1,0 +1,15 @@
+.search-button {
+    
+    background:  #1AA090;
+    color: white;
+   
+    border: none;
+    border-radius: 1px;
+    cursor: pointer;
+    font-size: 15px;
+    height: 60px;
+}
+
+.search-button:hover {
+    background: #148f84;
+}
