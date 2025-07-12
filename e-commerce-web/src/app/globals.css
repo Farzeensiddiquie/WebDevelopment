@@ -1,0 +1,284 @@
+@import "tailwindcss";
+:root {
+  --font-playfair: "Playfair Display", serif;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --scrollbar-thumb-gradient: linear-gradient(135deg, #667eea, #764ba2, #a18cd1);
+  --scrollbar-track-gradient: linear-gradient(135deg, #e4dada, #b9b9b9, #c4bebe);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --scrollbar-thumb-gradient: linear-gradient(135deg, #23223b, #4a4e69, #9a8c98);
+    --scrollbar-track-gradient: linear-gradient(135deg, #292941, #4a4e69, #9a8c98);
+  }
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Enhanced scrollbar with gradient */
+::-webkit-scrollbar {
+  width: 12px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  min-width: 12px;
+  max-width: 12px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea, #764ba2, #9a8c98);
+  border-radius: 6px;
+  min-width: 12px;
+  max-width: 12px;
+  transition: background 0.3s;
+  
+ 
+}
+
+/* Dark theme scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7);
+
+}
+
+/* Light theme scrollbar */
+.light ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #7c3aed);
+
+  background-clip: content-box;
+}
+
+/* Optionally animate the thumb gradient */
+::-webkit-scrollbar-thumb {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.drop-down {
+  background: linear-gradient(135deg, #22223b, #4a4e69, #9a8c98);
+}
+
+/* Beautiful gradient animations */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Enhanced NProgress styling */
+#nprogress {
+  pointer-events: none;
+  z-index: 9999;
+}
+
+#nprogress .bar {
+  background: linear-gradient(90deg, #667eea, #764ba2, #9a8c98, #c9ada7, #f2e9e4);
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+  height: 4px;
+  box-shadow: 0 0 10px rgba(34, 34, 59, 0.8);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+}
+
+/* Dark theme progress bar */
+.dark #nprogress .bar {
+  background: linear-gradient(90deg, #4f46e5, #7c3aed, #a855f7, #ec4899, #f43f5e);
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+  box-shadow: 0 0 15px rgba(79, 70, 229, 0.6);
+}
+
+/* Light theme progress bar */
+.light #nprogress .bar {
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8, #7c3aed, #a855f7, #ec4899);
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
+
+#nprogress .peg {
+  display: none;
+}
+
+/* Enhanced loader */
+.loader {
+  width: 65px;
+  aspect-ratio: 1;
+  position: relative;
+}
+
+.loader:before,
+.loader:after {
+  content: "";
+  position: absolute;
+  border-radius: 50px;
+  box-shadow: 0 0 0 3px inset #9a8c98;
+  animation: l5 2.5s infinite;
+}
+
+.loader:after {
+  animation-delay: -1.25s;
+  border-radius: 0;
+}
+
+@keyframes l5 {
+  0% {
+    inset: 0;
+    transform: rotate(0deg);
+  }
+  50% {
+    inset: 0;
+    transform: rotate(180deg);
+  }
+  100% {
+    inset: 0;
+    transform: rotate(360deg);
+  }
+}
+
+/* Utility classes for animations */
+.animate-loading-bar {
+  animation: shimmer 1.6s linear infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.gradient-animate {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Enhanced focus states */
+/* stylelint-disable-next-line at-rule-no-unknown */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
+
+/* stylelint-disable-next-line at-rule-no-unknown */
+.focus-ring-blue {
+  @apply focus:ring-blue-500;
+}
+
+/* stylelint-disable-next-line at-rule-no-unknown */
+.focus-ring-purple {
+  @apply focus:ring-purple-500;
+}
+
+/* Glass morphism effect */
+.glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-dark {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Enhanced hover effects */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Gradient text effect */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enhanced button styles */
+.btn-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
