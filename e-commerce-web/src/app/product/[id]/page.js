@@ -3,12 +3,15 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { productAPI } from '../../../utils/api';
+import { productAPI, reviewAPI } from '../../../utils/api';
 import { useUser } from '../../../context/UserContext';
 import { useCart } from '../../../context/CartContext';
 import { useToast } from '../../../context/ToastContext';
 import { useTheme } from '../../../context/ThemeContext';
+import { useProducts } from '../../../context/ProductContext';
 import ProgressLink from '../../../components/ProgressLink';
+import StarRating from '../../../components/StarRating';
+import { Trash2 } from 'lucide-react';
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -16,7 +19,11 @@ export default function ProductPage() {
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const { getCurrentScheme } = useTheme();
+  const { updateProductRating } = useProducts();
   const scheme = getCurrentScheme();
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,32 +35,84 @@ export default function ProductPage() {
   const [activeTab, setActiveTab] = useState('rating');
   const [showModal, setShowModal] = useState(false);
   const [reviewText, setReviewText] = useState('');
+  const [reviewTitle, setReviewTitle] = useState('');
   const [reviewRating, setReviewRating] = useState(0);
   const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
 
-  // Fetch product data from backend
+  // Fetch product data and reviews from backend
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndReviews = async () => {
       try {
         setLoading(true);
-        const response = await productAPI.getById(id);
-        const productData = response.data; // Extract data from response
-        console.log('Product data received:', productData);
-        console.log('Product image URL:', productData.image);
+        setReviewsLoading(true);
+        
+        // Fetch product data
+        const productResponse = await productAPI.getById(id);
+        
+        // Check if response contains an error
+        if (productResponse && productResponse.error) {
+          console.error('Failed to fetch product:', productResponse.error);
+          setError('Failed to load product');
+          return;
+        }
+        
+        // Handle the response data
+        const productData = productResponse.data || productResponse; // Extract data from response
         setProduct(productData);
         setSelectedImage(productData.image);
+
+        // Fetch reviews and update product rating
+        try {
+          const reviewsResponse = await reviewAPI.getProductReviews(id, { limit: 20 });
+          if (reviewsResponse && reviewsResponse.data) {
+            setReviews(reviewsResponse.data);
+            
+            // Update product with latest rating from reviews
+            if (reviewsResponse.stats && productData) {
+              const newRating = reviewsResponse.stats.averageRating || productData.rating || 0;
+              const newNumReviews = reviewsResponse.stats.totalReviews || productData.numReviews || 0;
+              
+              setProduct(prev => ({
+                ...prev,
+                rating: newRating,
+                numReviews: newNumReviews
+              }));
+              
+              // Update global product data in ProductContext
+              updateProductRating(id, newRating, newNumReviews);
+            }
+          }
+        } catch (reviewError) {
+          console.error('Failed to fetch reviews:', reviewError);
+          // Don't set error for reviews, just log it
+        }
       } catch (error) {
         console.error('Failed to fetch product:', error);
         setError('Failed to load product');
       } finally {
         setLoading(false);
+        setReviewsLoading(false);
       }
     };
 
     if (id) {
-      fetchProduct();
+      fetchProductAndReviews();
     }
   }, [id]);
+
+  // Fetch latest product data from backend
+  const fetchLatestProduct = async () => {
+    try {
+      const response = await productAPI.getById(id);
+      if (response && (response.data || response.rating)) {
+        setProduct(response.data || response);
+      }
+    } catch (err) {
+      // Optionally handle error
+    }
+  };
 
   if (loading) {
     return (
@@ -76,17 +135,131 @@ export default function ProductPage() {
     );
   }
 
-  const handleSubmitReview = () => {
-    const newReview = {
-      name: user?.name || 'Anonymous',
-      rating: reviewRating,
-      text: reviewText,
-      date: new Date().toLocaleDateString(),
-    };
-    setReviews([...reviews, newReview]);
-    setShowModal(false);
-    setReviewText('');
-    setReviewRating(0);
+  const handleSubmitReview = async () => {
+    if (!user) {
+      showToast('Please login to write a review', 'error');
+      return;
+    }
+
+    if (reviewRating === 0) {
+      showToast('Please select a rating', 'error');
+      return;
+    }
+
+    if (reviewText.trim().length < 10) {
+      showToast('Review must be at least 10 characters long', 'error');
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+      
+      const reviewData = {
+        rating: reviewRating,
+        text: reviewText.trim(),
+        title: reviewTitle.trim() || undefined
+      };
+
+      const response = await reviewAPI.addReview(id, reviewData);
+      
+      if (response && response.success) {
+        showToast('Review submitted successfully!', 'success');
+        
+        // Refresh reviews
+        const reviewsResponse = await reviewAPI.getProductReviews(id, { limit: 20 });
+        if (reviewsResponse && reviewsResponse.data) {
+          setReviews(reviewsResponse.data);
+        }
+        
+        // Update product rating
+        if (product && response.stats) {
+          const newRating = response.stats.averageRating || (product.rating ?? 0);
+          const newNumReviews = response.stats.totalReviews || (product.numReviews ?? 0);
+          
+          console.log('Updating product rating:', {
+            oldRating: product.rating ?? 0,
+            newRating,
+            oldNumReviews: product.numReviews ?? 0,
+            newNumReviews
+          });
+          
+          // Update local product state
+          setProduct(prev => ({
+            ...prev,
+            rating: newRating,
+            numReviews: newNumReviews
+          }));
+          
+          // Update global product data in ProductContext
+          updateProductRating(id, newRating, newNumReviews);
+        }
+        
+        await fetchLatestProduct();
+        setShowModal(false);
+        setReviewText('');
+        setReviewTitle('');
+        setReviewRating(0);
+      } else {
+        showToast('Failed to submit review', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to submit review:', error);
+      if (error.message?.includes('already reviewed')) {
+        showToast('You have already reviewed this product', 'error');
+      } else {
+        showToast('Failed to submit review', 'error');
+      }
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!isAdmin) {
+      showToast('Access denied. Admin privileges required.', 'error');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await reviewAPI.deleteReviewAdmin(reviewId);
+      
+      if (response && response.success) {
+        showToast('Review deleted successfully', 'success');
+        
+        // Refresh reviews
+        const reviewsResponse = await reviewAPI.getProductReviews(id, { limit: 20 });
+        if (reviewsResponse && reviewsResponse.data) {
+          setReviews(reviewsResponse.data);
+        }
+        
+        // Update product rating
+        if (product && response.stats) {
+          const newRating = response.stats.averageRating || (product.rating ?? 0);
+          const newNumReviews = response.stats.totalReviews || (product.numReviews ?? 0);
+          setProduct(prev => ({
+            ...prev,
+            rating: newRating,
+            numReviews: newNumReviews
+          }));
+          // Update global product data in ProductContext
+          updateProductRating(id, newRating, newNumReviews);
+        }
+        await fetchLatestProduct();
+      } else {
+        showToast('Failed to delete review', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete review:', error);
+      if (error.message?.includes('Access denied')) {
+        showToast('Access denied. Admin privileges required.', 'error');
+      } else {
+        showToast('Failed to delete review', 'error');
+      }
+    }
   };
 
   const handleAddToCart = async () => {
@@ -228,8 +401,13 @@ export default function ProductPage() {
           <div className={`w-full lg:w-1/2 ${scheme.card} rounded-xl shadow-md p-6 border ${scheme.border}`}>
             <h1 className={`text-xl sm:text-2xl font-black ${scheme.text}`}>{product.name}</h1>
             <div className="flex items-center gap-2 my-2">
-              <span className="text-yellow-500 text-lg">★ {product.rating || 4.5}</span>
-              <span className={`${scheme.textSecondary} text-sm`}>({reviews.length} Reviews)</span>
+              <StarRating 
+                rating={product.rating || 0} 
+                size="lg" 
+                readonly={true} 
+                showValue={true}
+              />
+              <span className={`${scheme.textSecondary} text-sm`}>({product.numReviews || reviews.length} Reviews)</span>
             </div>
 
             <div className="flex items-center gap-4 text-lg sm:text-xl font-semibold mt-4">
@@ -335,21 +513,54 @@ export default function ProductPage() {
                     Write a Review
                   </button>
                 </div>
-                <div className="space-y-4">
-                  {reviews.map((review, index) => (
-                    <div key={index} className={`border-b pb-4 ${scheme.border}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`font-semibold ${scheme.text}`}>{review.name}</span>
-                        <span className="text-yellow-500">★ {review.rating}</span>
-                        <span className={`${scheme.textSecondary} text-sm`}>{review.date}</span>
+                {reviewsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <p className={`${scheme.textSecondary}`}>Loading reviews...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review._id} className={`border-b pb-4 ${scheme.border}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-semibold ${scheme.text}`}>{review.userName}</span>
+                            <StarRating 
+                              rating={review.rating} 
+                              size="sm" 
+                              readonly={true}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`${scheme.textSecondary} text-sm`}>
+                              {new Date(review.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteReview(review._id)}
+                                className={`p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900 transition-colors duration-200 ${scheme.textSecondary} hover:text-red-600`}
+                                title="Delete review (Admin only)"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {review.title && (
+                          <h4 className={`font-medium ${scheme.text} mb-1`}>{review.title}</h4>
+                        )}
+                        <p className={`${scheme.textSecondary}`}>{review.text}</p>
                       </div>
-                      <p className={`${scheme.textSecondary}`}>{review.text}</p>
-                    </div>
-                  ))}
-                  {reviews.length === 0 && (
-                    <p className={`${scheme.textSecondary}`}>No reviews yet. Be the first to review this product!</p>
-                  )}
-                </div>
+                    ))}
+                    {reviews.length === 0 && (
+                      <p className={`${scheme.textSecondary}`}>No reviews yet. Be the first to review this product!</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -372,17 +583,24 @@ export default function ProductPage() {
             <h3 className={`text-lg font-semibold mb-4 ${scheme.text}`}>Write a Review</h3>
             <div className="mb-4">
               <label className={`block text-sm font-medium mb-2 ${scheme.text}`}>Rating:</label>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => setReviewRating(star)}
-                    className={`text-2xl ${reviewRating >= star ? 'text-yellow-500' : 'text-gray-300'}`}
-                  >
-                    ★
-                  </button>
-                ))}
-              </div>
+              <StarRating 
+                rating={reviewRating} 
+                size="lg" 
+                readonly={false}
+                onRatingChange={setReviewRating}
+                className="justify-start"
+              />
+            </div>
+            <div className="mb-4">
+              <label className={`block text-sm font-medium mb-2 ${scheme.text}`}>Title (Optional):</label>
+              <input
+                type="text"
+                value={reviewTitle}
+                onChange={(e) => setReviewTitle(e.target.value)}
+                className={`w-full p-2 border rounded ${scheme.border} ${scheme.background} ${scheme.text}`}
+                placeholder="Brief title for your review..."
+                maxLength={100}
+              />
             </div>
             <div className="mb-4">
               <label className={`block text-sm font-medium mb-2 ${scheme.text}`}>Review:</label>
@@ -391,21 +609,39 @@ export default function ProductPage() {
                 onChange={(e) => setReviewText(e.target.value)}
                 className={`w-full p-2 border rounded ${scheme.border} ${scheme.background} ${scheme.text}`}
                 rows="4"
-                placeholder="Share your thoughts about this product..."
+                placeholder="Share your thoughts about this product... (minimum 10 characters)"
+                maxLength={1000}
               />
+              <div className={`text-xs mt-1 ${scheme.textSecondary}`}>
+                {reviewText.length}/1000 characters
+              </div>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setReviewText('');
+                  setReviewTitle('');
+                  setReviewRating(0);
+                }}
                 className={`px-4 py-2 border rounded ${scheme.border} ${scheme.text}`}
+                disabled={submittingReview}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitReview}
-                className={`px-4 py-2 ${scheme.accent} text-white rounded`}
+                className={`px-4 py-2 ${scheme.accent} text-white rounded flex items-center gap-2`}
+                disabled={submittingReview}
               >
-                Submit Review
+                {submittingReview ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Review'
+                )}
               </button>
             </div>
           </div>

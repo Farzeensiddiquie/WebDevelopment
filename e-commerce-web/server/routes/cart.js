@@ -1,6 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const User = require('../models/User');
 const Product = require('../models/Product');
 
@@ -9,7 +9,7 @@ const router = express.Router();
 // @route   GET /api/cart
 // @desc    Get user's cart
 // @access  Private
-router.get('/', auth.auth, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).populate('cart.productId');
     
@@ -54,7 +54,7 @@ router.get('/', auth.auth, async (req, res) => {
 // @desc    Add item to cart
 // @access  Private
 router.post('/', [
-  auth.auth,
+  auth,
   body('productId', 'Product ID is required').not().isEmpty(),
   body('quantity', 'Quantity must be a positive number').isInt({ min: 1 }),
   body('size').optional().trim(),
@@ -123,7 +123,7 @@ router.post('/', [
 // @desc    Update cart item quantity
 // @access  Private
 router.put('/:itemId', [
-  auth.auth,
+  auth,
   body('quantity', 'Quantity must be a positive number').isInt({ min: 1 })
 ], async (req, res) => {
   try {
@@ -167,7 +167,7 @@ router.put('/:itemId', [
 // @route   DELETE /api/cart/:itemId
 // @desc    Remove item from cart
 // @access  Private
-router.delete('/:itemId', auth.auth, async (req, res) => {
+router.delete('/:itemId', auth, async (req, res) => {
   try {
     const { itemId } = req.params;
     console.log('Attempting to delete cart item:', itemId);
@@ -204,7 +204,7 @@ router.delete('/:itemId', auth.auth, async (req, res) => {
 // @route   DELETE /api/cart
 // @desc    Clear entire cart
 // @access  Private
-router.delete('/', auth.auth, async (req, res) => {
+router.delete('/', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     user.cart = [];

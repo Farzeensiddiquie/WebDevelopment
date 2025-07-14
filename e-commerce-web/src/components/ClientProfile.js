@@ -16,7 +16,7 @@ export default function ClientProfile() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isAuthenticated, loading } = useUser();
-  const { orders, updateOrderStatus, clearCancelledOrders } = useOrders();
+  const { orders, updateOrderStatus, clearCompletedOrders, refreshOrders, loading: ordersLoading } = useOrders();
   const { wishlistItems, removeFromWishlist } = useWishlist();
   const { showToast } = useToast();
   const { getCurrentScheme } = useTheme();
@@ -37,6 +37,24 @@ export default function ClientProfile() {
     }
   }, [isAuthenticated, loading, router]);
 
+  // Update active tab when URL changes
+  useEffect(() => {
+    const urlTab = searchParams.get("tab");
+    if (urlTab && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [searchParams, activeTab]);
+
+  // Load saved address on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('saved_address');
+    if (saved) {
+      try {
+        setAddress(JSON.parse(saved));
+      } catch {}
+    }
+  }, []);
+
   // Simulate user sign up state (replace with real logic if available)
   const isGuest = user && user.isGuest;
 
@@ -50,6 +68,8 @@ export default function ClientProfile() {
 
   const getStatusIcon = (status) => {
     switch (status) {
+      case 'pending':
+        return <Clock className="w-4 h-4 text-orange-500" />;
       case 'processing':
         return <Clock className="w-4 h-4 text-yellow-500" />;
       case 'shipped':
@@ -65,6 +85,8 @@ export default function ClientProfile() {
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'pending':
+        return 'text-orange-500';
       case 'processing':
         return 'text-yellow-500';
       case 'shipped':
@@ -108,33 +130,59 @@ export default function ClientProfile() {
   const renderTab = () => {
     switch (activeTab) {
       case "orders":
-        const hasCancelled = orders.some(order => order.status === 'cancelled');
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Your Orders</h3>
-              {hasCancelled && (
+              {(orders.some(order => order.status === 'cancelled') || orders.some(order => order.status === 'delivered')) && (
                 <button
-                  onClick={() => {
-                    clearCancelledOrders();
-                    showToast('Cancelled orders cleared');
+                  onClick={async () => {
+                    try {
+                      await clearCompletedOrders();
+                      // Reload orders if user is authenticated
+                      if (isAuthenticated) {
+                        try {
+                          await refreshOrders();
+                        } catch (error) {
+                          console.error('Failed to refresh orders:', error);
+                          // Show appropriate message based on error type
+                          if (error.message?.includes('Authentication required')) {
+                            console.log('Authentication required, orders refreshed from localStorage');
+                          }
+                        }
+                      }
+                      showToast('Cancelled and delivered orders cleared');
+                    } catch (error) {
+                      console.error('Failed to clear orders:', error);
+                      // Show different messages based on error type
+                      if (error.message?.includes('Authentication required')) {
+                        showToast('Orders cleared locally. Please log in to sync with server.', 'warning');
+                      } else {
+                        showToast('Failed to clear orders', 'error');
+                      }
+                    }
                   }}
                   className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
                 >
-                  Clear Cancelled Orders
+                  Clear Cancelled & Delivered Orders
                 </button>
               )}
             </div>
-            {orders.length === 0 ? (
+            {ordersLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                <p className={`${scheme.textSecondary}`}>Loading orders...</p>
+              </div>
+            ) : orders.length === 0 ? (
               <div className="text-center py-8">
                 <Package className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-400">No orders yet.</p>
-                <p className="text-sm text-gray-500 mt-2">Start shopping to see your orders here!</p>
+                <p className={`${scheme.textSecondary}`}>No orders yet.</p>
+                <p className={`text-sm ${scheme.textSecondary} mt-2`}>Start shopping to see your orders here!</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {orders.map((order) => (
-                  <div key={order.id} className={`${scheme.card} rounded-lg p-4 border ${scheme.border}`}>
+                  <div key={order.id} className={`${scheme.card} rounded-lg p-4 border ${scheme.border} shadow-lg hover:shadow-xl transition-all duration-200`}>
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-2">
                         {getStatusIcon(order.status)}
@@ -147,7 +195,8 @@ export default function ClientProfile() {
                       </span>
                     </div>
                     
-                    <div className="space-y-2">
+                    {/* Order Items */}
+                    <div className="space-y-2 mb-3">
                       {order.items && order.items.map((item, index) => (
                         <div key={index} className="flex justify-between text-sm">
                           <span className={`${scheme.text}`}>{item.name} x{item.quantity}</span>
@@ -155,22 +204,112 @@ export default function ClientProfile() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Payment and Delivery Info */}
+                    <div className={`space-y-2 mb-3 p-3 ${scheme.card} rounded-lg border ${scheme.border}`}>
+                      {/* Payment Status */}
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={`${scheme.textSecondary}`}>Payment Method:</span>
+                        <span className={`font-medium ${
+                          order.payment?.method === 'cod' 
+                            ? 'text-orange-600 dark:text-orange-400' 
+                            : 'text-green-600 dark:text-green-400'
+                        }`}>
+                          {order.payment?.method === 'cod' ? 'Cash on Delivery' : 'Pre-paid'}
+                        </span>
+                      </div>
+
+                      {/* Shipping Time Information */}
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={`${scheme.textSecondary}`}>Shipping Time:</span>
+                        <span className={`${scheme.text} font-medium`}>
+                          {order.status === 'pending' ? '2-3 business days' :
+                           order.status === 'processing' ? '1-2 business days' :
+                           order.status === 'shipped' ? 'In transit' :
+                           order.status === 'delivered' ? 'Delivered' :
+                           order.status === 'cancelled' ? 'Cancelled' : 'Standard delivery'}
+                        </span>
+                      </div>
+
+                      {/* Refund Information for Cancelled Prepaid Orders */}
+                      {order.status === 'cancelled' && order.payment?.method === 'prepayment' && order.refund && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className={`${scheme.textSecondary}`}>Refund Status:</span>
+                          <span className={`font-medium ${
+                            order.refund.status === 'processed' 
+                              ? 'text-green-600 dark:text-green-400' 
+                              : 'text-purple-600 dark:text-purple-400'
+                          }`}>
+                            {order.refund.status === 'processed' 
+                              ? `Processed ($${order.refund.amount?.toFixed(2)})` 
+                              : `Pending ($${order.refund.amount?.toFixed(2)})`
+                            }
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Delivery Information */}
+                      {order.estimatedDelivery && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className={`${scheme.textSecondary}`}>Estimated Delivery:</span>
+                          <span className={`${scheme.text}`}>
+                            {new Date(order.estimatedDelivery).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Shipping Address */}
+                      {order.shipping && (
+                        <div className="text-sm">
+                          <div className={`${scheme.textSecondary} mb-1`}>Shipping Address:</div>
+                          <div className={`${scheme.text} text-xs`}>
+                            {order.shipping.firstName} {order.shipping.lastName}
+                            {order.shipping.phone && ` • 📞 ${order.shipping.phone}`}
+                          </div>
+                          <div className={`${scheme.text} text-xs`}>
+                            {order.shipping.address}
+                            {order.shipping.city && `, ${order.shipping.city}`}
+                            {order.shipping.zipCode && ` • ${order.shipping.zipCode}`}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     
-                    <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
+                    <div className={`border-t ${scheme.border} pt-3 flex justify-between items-center`}>
                       <span className={`font-bold ${scheme.text}`}>
                         Total: ${order.totals?.total?.toFixed(2) || '0.00'}
                       </span>
-                      {(order.status === 'processing' || order.status === 'shipped') && (
+                      {(order.status === 'pending' || order.status === 'processing' || order.status === 'shipped') && (
                         <button
-                          onClick={() => {
-                            updateOrderStatus(order.id, 'cancelled');
-                            showToast('Order cancelled successfully');
+                          onClick={async () => {
+                            try {
+                              await updateOrderStatus(order.id, 'cancelled');
+                              showToast('Order cancelled successfully');
+                            } catch (error) {
+                              showToast('Failed to cancel order', 'error');
+                            }
                           }}
                           className="ml-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
                         >
                           Cancel Order
                         </button>
                       )}
+                      {/* Show payment status for all orders */}
+                      <div className="mt-2">
+                        {order.payment?.method === 'cod' ? (
+                          <span className="text-xs px-2 py-1 rounded bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                            Cash on Delivery
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Pre-paid
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -290,23 +429,6 @@ export default function ClientProfile() {
         return null;
     }
   };
-
-  useEffect(() => {
-    const urlTab = searchParams.get("tab");
-    if (urlTab && urlTab !== activeTab) {
-      setActiveTab(urlTab);
-    }
-  }, [searchParams, activeTab]);
-
-  // Load saved address on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('saved_address');
-    if (saved) {
-      try {
-        setAddress(JSON.parse(saved));
-      } catch {}
-    }
-  }, []);
 
   return (
     <div className={`min-h-screen ${scheme.background} ${scheme.text} px-4 py-10 relative`}>

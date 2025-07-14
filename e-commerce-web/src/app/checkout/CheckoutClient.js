@@ -5,7 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import { useOrders } from '../../context/OrderContext';
 import ProgressLink from '../../components/ProgressLink';
-import { ArrowLeft, CreditCard, Truck, Shield } from 'lucide-react';
+import { ArrowLeft, CreditCard, Truck, Shield, Package, DollarSign } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import UserContext from '../../context/UserContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -41,6 +41,8 @@ export default function CheckoutClient() {
   const [selectedShipping, setSelectedShipping] = useState('standard');
   const [saveAddress, setSaveAddress] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('prepayment'); // 'prepayment' or 'cod'
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Load user profile and saved address on mount
   useEffect(() => {
@@ -81,27 +83,34 @@ export default function CheckoutClient() {
     setter(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleCheckout = async (e) => {
     e.preventDefault();
-    // Validate payment fields
-    if (!paymentInfo.cardNumber || !paymentInfo.cardName || !paymentInfo.expiry || !paymentInfo.cvv) {
-      setPaymentError('All payment fields are required.');
-      return;
-    } else {
-      setPaymentError('');
+    
+    // Validate payment fields for prepayment
+    if (paymentMethod === 'prepayment') {
+      if (!paymentInfo.cardNumber || !paymentInfo.cardName || !paymentInfo.expiry || !paymentInfo.cvv) {
+        setPaymentError('All payment fields are required for pre-payment.');
+        return;
+      } else {
+        setPaymentError('');
+      }
     }
+    
     // Save address if checked
     if (saveAddress) {
       localStorage.setItem('saved_address', JSON.stringify(shippingInfo));
     }
+
+    setIsProcessing(true);
 
     // Create order object
     const orderData = {
       items: cartItems,
       shipping: shippingInfo,
       payment: {
-        method: selectedPayment,
-        cardNumber: paymentInfo.cardNumber.slice(-4), // Only store last 4 digits
+        method: paymentMethod,
+        cardNumber: paymentMethod === 'prepayment' && paymentInfo.cardNumber ? paymentInfo.cardNumber.slice(-4) : '', // Only store last 4 digits
+        status: paymentMethod === 'prepayment' ? 'paid' : 'pending'
       },
       totals: {
         subtotal,
@@ -111,6 +120,8 @@ export default function CheckoutClient() {
         total
       },
       shippingMethod: selectedShipping,
+      status: 'pending',
+      estimatedDelivery: getEstimatedDeliveryDate(selectedShipping)
     };
 
     // Save order
@@ -119,11 +130,34 @@ export default function CheckoutClient() {
     // Clear cart
     clearCart();
     
-    // Show success message
-    showToast(`Order #${newOrder.id.slice(-8)} placed successfully! Thank you for your purchase.`);
+    // Show success message based on payment method
+    const orderNumber = newOrder?.id ? newOrder.id.slice(-8) : 'placed';
+    if (paymentMethod === 'cod') {
+      showToast(`Order #${orderNumber} placed successfully! You will pay ${total.toFixed(2)} on delivery. Estimated delivery: 3-5 business days.`);
+    } else {
+      showToast(`Order #${orderNumber} placed successfully! Payment received. Estimated delivery: 3-5 business days.`);
+    }
     
     // Redirect to profile orders tab (client-side navigation)
     router.push('/profile?tab=orders');
+    setIsProcessing(false);
+  };
+
+  // Helper function to calculate estimated delivery date
+  const getEstimatedDeliveryDate = (shippingMethod) => {
+    const today = new Date();
+    const businessDays = shippingMethod === 'express' ? 3 : 5;
+    const deliveryDate = new Date(today);
+    
+    let addedDays = 0;
+    while (addedDays < businessDays) {
+      deliveryDate.setDate(deliveryDate.getDate() + 1);
+      if (deliveryDate.getDay() !== 0 && deliveryDate.getDay() !== 6) {
+        addedDays++;
+      }
+    }
+    
+    return deliveryDate.toISOString();
   };
 
   const { getCurrentScheme } = useTheme();
@@ -294,50 +328,116 @@ export default function CheckoutClient() {
                 <CreditCard className="w-5 h-5" />
                 Payment Information
               </h2>
-              {paymentError && (
-                <div className="mb-4 text-red-600 font-semibold text-sm">{paymentError}</div>
-              )}
-              <div className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>Card Number <span className='text-red-500'>*</span></label>
-                  <input
-                    type="text"
-                    value={paymentInfo.cardNumber}
-                    onChange={(e) => handleInputChange(setPaymentInfo, 'cardNumber', e.target.value)}
-                    placeholder="1234 5678 9012 3456"
-                    className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>Cardholder Name <span className='text-red-500'>*</span></label>
-                  <input
-                    type="text"
-                    value={paymentInfo.cardName}
-                    onChange={(e) => handleInputChange(setPaymentInfo, 'cardName', e.target.value)}
-                    className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>Expiry Date <span className='text-red-500'>*</span></label>
-                  <input
-                    type="text"
-                    value={paymentInfo.expiry}
-                    onChange={(e) => handleInputChange(setPaymentInfo, 'expiry', e.target.value)}
-                    placeholder="MM/YY"
-                    className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>CVV <span className='text-red-500'>*</span></label>
-                  <input
-                    type="text"
-                    value={paymentInfo.cvv}
-                    onChange={(e) => handleInputChange(setPaymentInfo, 'cvv', e.target.value)}
-                    placeholder="123"
-                    className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
-                  />
+
+              {/* Payment Method Selection */}
+              <div className="mb-6">
+                <h3 className={`text-lg font-semibold mb-4 ${scheme.text}`}>Payment Method</h3>
+                <div className="space-y-3">
+                  <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${scheme.border} ${scheme.card} hover:${scheme.hover} ${paymentMethod === 'prepayment' ? 'ring-2 ring-blue-500' : ''}`}>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="prepayment"
+                      checked={paymentMethod === 'prepayment'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="accent-blue-500"
+                    />
+                    <div className="flex-1">
+                      <div className={`font-medium ${scheme.text}`}>Pre-payment (Credit/Debit Card)</div>
+                      <div className={`text-sm ${scheme.textSecondary}`}>Pay now with your card</div>
+                    </div>
+                    <div className="text-green-600 font-semibold">Secure</div>
+                  </label>
+                  
+                  <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${scheme.border} ${scheme.card} hover:${scheme.hover} ${paymentMethod === 'cod' ? 'ring-2 ring-blue-500' : ''}`}>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cod"
+                      checked={paymentMethod === 'cod'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="accent-blue-500"
+                    />
+                    <div className="flex-1">
+                      <div className={`font-medium ${scheme.text}`}>Cash on Delivery (COD)</div>
+                      <div className={`text-sm ${scheme.textSecondary}`}>Pay when you receive your order</div>
+                    </div>
+                    <div className="text-orange-600 font-semibold">COD</div>
+                  </label>
                 </div>
               </div>
+
+              {/* Card Details (only show for prepayment) */}
+              {paymentMethod === 'prepayment' && (
+                <>
+                  {paymentError && (
+                    <div className="mb-4 text-red-600 font-semibold text-sm">{paymentError}</div>
+                  )}
+                  <div className="space-y-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>Card Number <span className='text-red-500'>*</span></label>
+                      <input
+                        type="text"
+                        value={paymentInfo.cardNumber}
+                        onChange={(e) => handleInputChange(setPaymentInfo, 'cardNumber', e.target.value)}
+                        placeholder="1234 5678 9012 3456"
+                        className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>Cardholder Name <span className='text-red-500'>*</span></label>
+                      <input
+                        type="text"
+                        value={paymentInfo.cardName}
+                        onChange={(e) => handleInputChange(setPaymentInfo, 'cardName', e.target.value)}
+                        className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>Expiry Date <span className='text-red-500'>*</span></label>
+                        <input
+                          type="text"
+                          value={paymentInfo.expiry}
+                          onChange={(e) => handleInputChange(setPaymentInfo, 'expiry', e.target.value)}
+                          placeholder="MM/YY"
+                          className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>CVV <span className='text-red-500'>*</span></label>
+                        <input
+                          type="text"
+                          value={paymentInfo.cvv}
+                          onChange={(e) => handleInputChange(setPaymentInfo, 'cvv', e.target.value)}
+                          placeholder="123"
+                          className={`w-full p-3 rounded-lg border ${scheme.border} ${scheme.card} ${scheme.text} focus:outline-none focus:ring-2 focus:ring-accent transition`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* COD Notice */}
+              {paymentMethod === 'cod' && (
+                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="text-orange-600 mt-1">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-orange-800">Cash on Delivery</h4>
+                      <p className="text-sm text-orange-700 mt-1">
+                        You will pay ${total.toFixed(2)} when your order is delivered. 
+                        Please have the exact amount ready for the delivery person.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -392,10 +492,18 @@ export default function CheckoutClient() {
             </div>
             {/* Place Order Button */}
             <button
-              onClick={handleSubmit}
+              onClick={handleCheckout}
+              disabled={isProcessing}
               className={`w-full py-4 rounded-lg font-bold text-lg mt-6 transition ${scheme.accent} text-white hover:opacity-90`}
             >
-              Place Order - ${total.toFixed(2)}
+              {isProcessing ? (
+                <div className="flex items-center justify-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  Processing...
+                </div>
+              ) : (
+                `Place Order - $${total.toFixed(2)}`
+              )}
             </button>
           </div>
         </div>

@@ -62,6 +62,14 @@ router.post('/register', [
     user.refreshToken = refreshToken;
     await user.save();
 
+    // Set access token as httpOnly cookie
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     // Set refresh token as httpOnly cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
@@ -73,7 +81,6 @@ router.post('/register', [
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -134,6 +141,14 @@ router.post('/login', [
     user.refreshToken = refreshToken;
     await user.save();
 
+    // Set access token as httpOnly cookie
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     // Set refresh token as httpOnly cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
@@ -145,7 +160,6 @@ router.post('/login', [
     res.json({
       success: true,
       message: 'Login successful',
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -169,8 +183,9 @@ router.post('/logout', auth.auth, async (req, res) => {
     // Clear refresh token from user
     await User.findByIdAndUpdate(req.user.id, { refreshToken: null });
 
-    // Clear refresh token cookie
+    // Clear both cookies
     res.clearCookie('refreshToken');
+    res.clearCookie('authToken');
 
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
@@ -207,6 +222,14 @@ router.post('/refresh', async (req, res) => {
     user.refreshToken = newRefreshToken;
     await user.save();
 
+    // Set new access token as httpOnly cookie
+    res.cookie('authToken', newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     // Set new refresh token cookie
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
@@ -217,7 +240,6 @@ router.post('/refresh', async (req, res) => {
 
     res.json({
       success: true,
-      token: newToken,
       user: {
         id: user._id,
         name: user.name,

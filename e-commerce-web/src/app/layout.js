@@ -72,7 +72,7 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${inter.variable} ${playfair.variable}`}
     >
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning={true}>
         <ClientProviders>
             <LayoutWrapper>{children}</LayoutWrapper>
         </ClientProviders>

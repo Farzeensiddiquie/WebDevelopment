@@ -5,8 +5,13 @@ import ProgressLink from "./ProgressLink";
 import { useUser } from '../context/UserContext';
 
 function TopBar() {
-  const { isAuthenticated } = useUser();
+  const { isAuthenticated, initialized } = useUser();
   const [isVisible, setIsVisible] = useState(true);
+
+  // Don't render until initialized to prevent flash
+  if (!initialized) {
+    return null;
+  }
 
   // Hide top bar if user is authenticated
   if (!isVisible || isAuthenticated) return null;

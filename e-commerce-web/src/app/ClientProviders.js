@@ -16,17 +16,17 @@ export default function ClientProviders({ children }) {
       <NProgressProvider>
         <UserProvider>
           <CartProvider>
-            <OrderProvider>
-              <WishlistProvider>
-                <NotificationProvider>
+            <NotificationProvider>
+              <OrderProvider>
+                <WishlistProvider>
                   <ToastProvider>
                     <ProductProvider>
                       {children}
                     </ProductProvider>
                   </ToastProvider>
-                </NotificationProvider>
-              </WishlistProvider>
-            </OrderProvider>
+                </WishlistProvider>
+              </OrderProvider>
+            </NotificationProvider>
           </CartProvider>
         </UserProvider>
       </NProgressProvider>

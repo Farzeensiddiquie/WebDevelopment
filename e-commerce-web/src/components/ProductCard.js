@@ -8,6 +8,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import NProgress from "nprogress";
 import { useTheme } from '../context/ThemeContext';
+import StarRating from './StarRating';
 
 export default function ProductCard({ product }) {
   const [hovered, setHovered] = useState(false);
@@ -30,10 +31,23 @@ export default function ProductCard({ product }) {
     }
   };
 
-  const handleAddToCart = (e) => {
-    e.stopPropagation();
-    addToCart(product);
-    showToast("Added to cart", "success", "cart");
+  const handleAddToCart = async () => {
+    try {
+      await addToCart({
+        id: product._id || product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        size: 'M', // Default size for quick add
+        color: 'Default', // Default color for quick add
+        quantity: 1
+      });
+      
+      showToast(`${product.name} added to cart!`, 'success');
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      showToast('Failed to add to cart', 'error');
+    }
   };
 
   return (
@@ -87,8 +101,13 @@ export default function ProductCard({ product }) {
           )}
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-yellow-500 text-sm">★</span>
-          <span className={`text-sm ${scheme.textSecondary}`}>{product.rating}</span>
+          <StarRating 
+            rating={product.rating || 0} 
+            size="sm" 
+            readonly={true} 
+            showValue={true}
+            className="text-sm"
+          />
         </div>
       </div>
     </div>

@@ -22,9 +22,16 @@ export function CartProvider({ children }) {
     try {
       setLoading(true);
       const response = await cartAPI.getCart();
-      setCartItems(response.items || []);
+      
+      if (response && response.items) {
+        setCartItems(response.items);
+      } else {
+        setCartItems([]);
+      }
     } catch (error) {
       console.error('Failed to load cart:', error);
+      // Don't clear cart items on error - keep existing items
+      // This prevents losing items when there's a network error
     } finally {
       setLoading(false);
     }
@@ -32,76 +39,46 @@ export function CartProvider({ children }) {
 
   const addToCart = async (product) => {
     try {
-      if (isAuthenticated) {
-        // Optimistically update local state
-        const newItem = {
-          id: `temp-${Date.now()}`, // Temporary ID
-          productId: product._id || product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          quantity: product.quantity || 1,
-          size: product.size,
-          color: product.color
-        };
+      const newItem = {
+        id: product._id || product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        size: product.size || 'M',
+        color: product.color || 'Default',
+        quantity: 1
+      };
 
-        setCartItems((prev) => {
-          const existing = prev.find(
-            (item) =>
-              (item.productId === newItem.productId) &&
-              item.size === product.size &&
-              item.color === product.color
+      setCartItems(prev => {
+        const existing = prev.find(item => 
+          item.id === newItem.id && 
+          item.size === newItem.size && 
+          item.color === newItem.color
+        );
+
+        if (existing) {
+          return prev.map(item => 
+            item.id === newItem.id && 
+            item.size === newItem.size && 
+            item.color === newItem.color
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
           );
-
-          if (existing) {
-            return prev.map((item) =>
-              item === existing
-                ? { ...item, quantity: item.quantity + (product.quantity || 1) }
-                : item
-            );
-          }
-
+        } else {
           return [...prev, newItem];
-        });
-
-        // Sync with backend in background
-        try {
-          await cartAPI.addToCart({
-            productId: product._id || product.id,
-            quantity: product.quantity || 1,
-            size: product.size,
-            color: product.color
-          });
-          // Reload to get proper IDs from backend
-          await loadCartFromBackend();
-        } catch (error) {
-          console.error('Failed to sync with backend:', error);
-          // Optionally revert on error
         }
-      } else {
-        // Add to local state for non-authenticated users
-        setCartItems((prev) => {
-          const existing = prev.find(
-            (item) =>
-              (item.id === product.id || item._id === product.id) &&
-              item.size === product.size &&
-              item.color === product.color
-          );
+      });
 
-          if (existing) {
-            return prev.map((item) =>
-              item === existing
-                ? { ...item, quantity: item.quantity + (product.quantity || 1) }
-                : item
-            );
-          }
-
-          return [...prev, { ...product, quantity: product.quantity || 1 }];
-        });
+      // Sync with backend if authenticated
+      if (isAuthenticated) {
+        try {
+          await cartAPI.addToCart(newItem);
+        } catch (error) {
+          console.error('Failed to sync cart with backend:', error);
+        }
       }
     } catch (error) {
       console.error('Failed to add to cart:', error);
-      throw error;
     }
   };
 

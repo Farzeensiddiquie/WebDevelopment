@@ -10,40 +10,64 @@ import { useUser } from '../context/UserContext';
 import { usePathname } from 'next/navigation';
 
 function NavBar() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
   const { cartItems, getCartItemCount } = useCart();
+  const { user, isAdmin, loading, initialized } = useUser();
+  const cartItemCount = getCartItemCount();
   const { getCurrentScheme } = useTheme();
-  const { user, isAdmin } = useUser();
   const scheme = getCurrentScheme();
   const pathname = usePathname();
-  // Only open dropdown on hover/focus
-  // const isShopActive = pathname.startsWith('/shop') || pathname.startsWith('/onsale') || pathname.startsWith('/newarrivals');
-  const isShopActive = pathname.startsWith('/shop') || pathname.startsWith('/onsale') || pathname.startsWith('/newarrivals');
 
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Shop dropdown state
+  const [shopDropdownOpen, setShopDropdownOpen] = useState(false);
+
+  // Check if we're on mobile
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
     checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const cartItemCount = getCartItemCount();
-
+  // Handle mobile menu open
   const handleMobileMenuOpen = () => {
     setMobileMenuOpen(true);
-    // Start animation after a brief delay to ensure the element is rendered
-    setTimeout(() => setIsAnimating(true), 10);
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 300);
   };
 
+  // Handle mobile menu close
   const handleMobileMenuClose = () => {
-    setIsAnimating(false);
+    setIsAnimating(true);
+    setMobileMenuOpen(false);
     setTimeout(() => setMobileMenuOpen(false), 300);
   };
+
+  // Only open dropdown on hover/focus
+  const isShopActive = pathname.startsWith('/shop') || pathname.startsWith('/onsale') || pathname.startsWith('/newarrivals');
+
+  // Show loading skeleton if not initialized
+  if (!initialized) {
+    return (
+      <div className={`w-full shadow-[0_3px_3px_-1px_rgba(0,0,0,0.6),0_6px_4px_-2px_rgba(0,0,0,0.06)] ${scheme.card} ${scheme.text}`}>
+        <div className="flex items-center justify-between px-4 md:px-6 py-3">
+          <div className="w-8 h-8 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+          <div className="w-12 h-12 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+          <div className="flex items-center gap-4">
+            <div className="w-5 h-5 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="w-5 h-5 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="w-8 h-8 bg-gray-300 dark:bg-gray-700 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -103,7 +127,7 @@ function NavBar() {
             </ProgressLink>
             
             {/* Admin Link - Only show for admin users */}
-            {isAdmin() && (
+            {initialized && isAdmin() && (
               <ProgressLink href="/admin" className={`${scheme.textSecondary} text-sm font-semibold hover:${scheme.text} transition`}>
                 Admin
               </ProgressLink>
@@ -171,10 +195,10 @@ function NavBar() {
                 >
                   <X className="w-5 h-5" />
                 </button>
-                
+
                 {/* Navigation items */}
                 <nav className="flex flex-col gap-4 space-y-3">
-                  <ProgressLink 
+                  <ProgressLink
                     href="/" 
                     className={`${scheme.textSecondary} text-sm font-semibold hover:${scheme.text} transition-all duration-200 ease-in-out hover:scale-105 ${pathname === '/' ? 'font-bold' : ''}`}
                     onClick={handleMobileMenuClose}
@@ -184,7 +208,7 @@ function NavBar() {
                   
                   {/* Shop with sub-links */}
                   <div className="space-y-2">
-                    <ProgressLink 
+                    <ProgressLink
                       href="/shop" 
                       className={`text-sm font-semibold ${scheme.textSecondary} hover:${scheme.text} transition-all duration-200 ease-in-out hover:scale-105 ${isShopActive ? 'font-bold' : ''}`}
                       onClick={handleMobileMenuClose}
@@ -216,7 +240,7 @@ function NavBar() {
                     </div>
                   </div>
                   
-                  <ProgressLink 
+                  <ProgressLink
                     href="/brands" 
                     className={`${scheme.textSecondary} text-sm font-semibold hover:${scheme.text} transition-all duration-200 ease-in-out hover:scale-105`}
                     onClick={handleMobileMenuClose}
@@ -224,16 +248,16 @@ function NavBar() {
                     Brands
                   </ProgressLink>
                   
-                  <ProgressLink 
-                    href="/newarrivals" 
+                  <ProgressLink
+                    href="/newarrivals"
                     className={`${scheme.textSecondary} text-sm font-semibold hover:${scheme.text} transition-all duration-200 ease-in-out hover:scale-105`}
                     onClick={handleMobileMenuClose}
                   >
                     New Arrivals
                   </ProgressLink>
                   
-                  <ProgressLink 
-                    href="/onsale" 
+                  <ProgressLink
+                    href="/onsale"
                     className={`${scheme.textSecondary} text-sm font-semibold hover:${scheme.text} transition-all duration-200 ease-in-out hover:scale-105`}
                     onClick={handleMobileMenuClose}
                   >
@@ -242,7 +266,7 @@ function NavBar() {
                   
                   {/* Admin Link - Only show for admin users */}
                   {isAdmin() && (
-                    <ProgressLink 
+                    <ProgressLink
                       href="/admin" 
                       className={`${scheme.textSecondary} text-sm font-semibold hover:${scheme.text} transition-all duration-200 ease-in-out hover:scale-105`}
                       onClick={handleMobileMenuClose}

@@ -3,8 +3,9 @@ const User = require('../models/User');
 
 const auth = async (req, res, next) => {
   try {
-    // Get token from header
-    const token = req.header('Authorization')?.replace('Bearer ', '') || 
+    // Get token from cookies first, then fallback to headers
+    const token = req.cookies.authToken || 
+                  req.header('Authorization')?.replace('Bearer ', '') || 
                   req.header('x-auth-token');
 
     if (!token) {
@@ -37,7 +38,8 @@ const auth = async (req, res, next) => {
 // Optional auth middleware (doesn't fail if no token)
 const optionalAuth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '') || 
+    const token = req.cookies.authToken || 
+                  req.header('Authorization')?.replace('Bearer ', '') || 
                   req.header('x-auth-token');
 
     if (token) {
@@ -58,11 +60,20 @@ const optionalAuth = async (req, res, next) => {
 
 // Admin middleware
 const admin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
     next();
   } else {
     res.status(403).json({ error: 'Access denied. Admin only.' });
   }
 };
 
-module.exports = { auth, optionalAuth, admin }; 
+// Superadmin middleware
+const superadmin = (req, res, next) => {
+  if (req.user && req.user.role === 'superadmin') {
+    next();
+  } else {
+    res.status(403).json({ error: 'Access denied. Superadmin only.' });
+  }
+};
+
+module.exports = { auth, optionalAuth, admin, superadmin }; 

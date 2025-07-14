@@ -22,6 +22,8 @@ const orderRoutes = require('./routes/orders');
 const addressRoutes = require('./routes/addresses');
 const searchRoutes = require('./routes/search');
 const reviewRoutes = require('./routes/reviews');
+const userRoutes = require('./routes/users');
+const notificationRoutes = require('./routes/notifications');
 
 // Middleware
 app.use(helmet({
@@ -57,8 +59,10 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  max: process.env.NODE_ENV === 'development' ? 500 : 100, // Higher limit for development
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 app.use('/api/', limiter);
 
@@ -93,6 +97,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Upload error handling middleware
 app.use(handleUploadError);
