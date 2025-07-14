@@ -42,7 +42,7 @@ router.get('/product/:productId', async (req, res) => {
 
     // Get reviews
     const reviews = await Review.find({ 
-      productId: mongoose.Types.ObjectId(productId), 
+      productId: productId, 
       isActive: true 
     })
     .sort(sortObj)
@@ -52,13 +52,13 @@ router.get('/product/:productId', async (req, res) => {
 
     // Get total count
     const total = await Review.countDocuments({ 
-      productId: mongoose.Types.ObjectId(productId), 
+      productId: productId, 
       isActive: true 
     });
 
     // Calculate average rating
     const avgRatingResult = await Review.aggregate([
-      { $match: { productId: mongoose.Types.ObjectId(productId), isActive: true } },
+      { $match: { productId: new mongoose.Types.ObjectId(productId), isActive: true } },
       { $group: { _id: null, avgRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } }
     ]);
 
@@ -127,8 +127,8 @@ router.post('/', [
 
     // Check if user has already reviewed this product
     const existingReview = await Review.findOne({ 
-      productId: mongoose.Types.ObjectId(productId), 
-      userId: mongoose.Types.ObjectId(userId) 
+      productId: productId, 
+      userId: userId 
     });
     if (existingReview) {
       return res.status(400).json({ error: 'You have already reviewed this product' });
@@ -136,8 +136,8 @@ router.post('/', [
 
     // Create new review
     const review = new Review({
-      productId: mongoose.Types.ObjectId(productId),
-      userId: mongoose.Types.ObjectId(userId),
+      productId: productId,
+      userId: userId,
       userName: req.user.name,
       userEmail: req.user.email,
       rating,
@@ -149,7 +149,7 @@ router.post('/', [
 
     // Update product rating
     const avgRatingResult = await Review.aggregate([
-      { $match: { productId: mongoose.Types.ObjectId(productId), isActive: true } },
+      { $match: { productId: new mongoose.Types.ObjectId(productId), isActive: true } },
       { $group: { _id: null, avgRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } }
     ]);
 
@@ -202,9 +202,9 @@ router.delete('/:reviewId/admin', auth.auth, async (req, res) => {
     // Soft delete (set isActive to false)
     await Review.findByIdAndUpdate(reviewId, { isActive: false });
 
-    // Update product rating
+    // Update product rating (admin delete)
     const avgRatingResult = await Review.aggregate([
-      { $match: { productId: mongoose.Types.ObjectId(review.productId), isActive: true } },
+      { $match: { productId: new mongoose.Types.ObjectId(review.productId), isActive: true } },
       { $group: { _id: null, avgRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } }
     ]);
 

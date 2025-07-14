@@ -93,23 +93,17 @@ const apiRequest = async (endpoint, options = {}) => {
       try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
         
-        // Handle authentication errors specifically - don't throw, return error response
-        // But for auth endpoints, allow errors to be thrown
+        // Handle authentication errors specifically - always return error object
         if (response.status === 401 || response.status === 403) {
-          if (isAuthEndpoint) {
-            // For auth endpoints, read the error message and throw it
-            const responseText = await response.text();
-            let responseData;
-            try {
-              responseData = JSON.parse(responseText);
-            } catch (parseError) {
-              responseData = { error: responseText || 'Authentication failed' };
-            }
-            const errorMessage = responseData.error || responseData.message || 'Authentication failed';
-            throw new Error(errorMessage);
-          } else {
-            return { error: 'Authentication required' };
+          const responseText = await response.text();
+          let responseData;
+          try {
+            responseData = JSON.parse(responseText);
+          } catch (parseError) {
+            responseData = { error: responseText || 'Authentication failed' };
           }
+          const errorMessage = responseData.error || responseData.message || 'Authentication failed';
+          return { error: errorMessage };
         }
         
         // Handle rate limiting with exponential backoff
@@ -139,7 +133,7 @@ const apiRequest = async (endpoint, options = {}) => {
         // Check if response is ok
         if (!response.ok) {
           const errorMessage = responseData.error || responseData.message || 'API request failed';
-          throw new Error(errorMessage);
+          return { error: errorMessage };
         }
         
         // Cache successful GET requests

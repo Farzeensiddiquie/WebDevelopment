@@ -162,6 +162,12 @@ export default function ProductPage() {
 
       const response = await reviewAPI.addReview(id, reviewData);
       
+      // Check if response contains an error
+      if (response && response.error) {
+        showToast(response.error, 'error');
+        return;
+      }
+      
       if (response && response.success) {
         showToast('Review submitted successfully!', 'success');
         
@@ -204,11 +210,7 @@ export default function ProductPage() {
       }
     } catch (error) {
       console.error('Failed to submit review:', error);
-      if (error.message?.includes('already reviewed')) {
-        showToast('You have already reviewed this product', 'error');
-      } else {
-        showToast('Failed to submit review', 'error');
-      }
+      showToast('Failed to submit review', 'error');
     } finally {
       setSubmittingReview(false);
     }
