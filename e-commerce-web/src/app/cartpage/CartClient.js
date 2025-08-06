@@ -6,11 +6,13 @@ import { Plus, Minus, Trash2, ArrowLeft, Loader2 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import ProgressLink from "../../components/ProgressLink";
 import { useTheme } from '../../context/ThemeContext';
+import { useUser } from '../../context/UserContext';
 
 export default function CartClient() {
   const { getCurrentScheme } = useTheme();
   const scheme = getCurrentScheme();
   const { cartItems, addToCart, removeFromCart, updateQuantity, loading, operationLoading } = useCart();
+  const { user, isAuthenticated, loading: userLoading } = useUser();
 
   const subtotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -49,7 +51,7 @@ export default function CartClient() {
         <h1 className={`text-3xl font-extrabold ${scheme.text}`}>YOUR CART</h1>
       </div>
 
-      {loading ? (
+      {loading || userLoading ? (
         <div className={`text-center ${scheme.textSecondary} mt-20`}>
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p className="text-lg font-semibold">Loading your cart...</p>
@@ -170,12 +172,22 @@ export default function CartClient() {
               </button>
             </div>
 
-            <ProgressLink 
-              href="/checkout"
-              className={`w-full mt-4 ${scheme.accent} text-white py-3 rounded-full font-semibold hover:opacity-90 transition block text-center`}
-            >
-              Go to Checkout →
-            </ProgressLink>
+            {/* Checkout Button */}
+            {user ? (
+              <ProgressLink 
+                href="/checkout"
+                className={`w-full mt-4 ${scheme.accent} text-white py-3 rounded-full font-semibold hover:opacity-90 transition block text-center`}
+              >
+                Go to Checkout →
+              </ProgressLink>
+            ) : (
+              <ProgressLink
+                href="/login?redirect=/checkout"
+                className={`w-full mt-4 bg-gray-400 text-white py-3 rounded-full font-semibold block text-center cursor-pointer opacity-80`}
+              >
+                Login to Checkout
+              </ProgressLink>
+            )}
           </div>
         </div>
       )}

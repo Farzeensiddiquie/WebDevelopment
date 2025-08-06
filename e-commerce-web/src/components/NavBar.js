@@ -19,7 +19,6 @@ function NavBar() {
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Shop dropdown state
@@ -38,15 +37,11 @@ function NavBar() {
   // Handle mobile menu open
   const handleMobileMenuOpen = () => {
     setMobileMenuOpen(true);
-    setIsAnimating(true);
-    setTimeout(() => setIsAnimating(false), 300);
   };
 
   // Handle mobile menu close
   const handleMobileMenuClose = () => {
-    setIsAnimating(true);
     setMobileMenuOpen(false);
-    setTimeout(() => setMobileMenuOpen(false), 300);
   };
 
   // Only open dropdown on hover/focus
@@ -77,7 +72,8 @@ function NavBar() {
           <div className="block" style={{ display: isMobile ? "block" : "none" }}>
             <button
               onClick={handleMobileMenuOpen}
-              className={`${scheme.textSecondary}`}
+              className={`${scheme.textSecondary} hamburger-btn`}
+              aria-label="Open menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -177,13 +173,16 @@ function NavBar() {
           <>
             {/* Overlay */}
             <div
-              className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isAnimating ? 'opacity-100' : 'opacity-0'} pointer-events-auto`}
-              onClick={handleMobileMenuClose}
+              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ease-in-out opacity-100 pointer-events-auto"
+              onClick={e => {
+                if (e.target.closest('button[aria-label="Open menu"], .hamburger-btn')) return;
+                handleMobileMenuClose();
+              }}
               aria-label="Close menu overlay"
             />
             {/* Drawer */}
             <div
-              className={`fixed top-0 left-0 h-screen w-[80%] sm:w-[300px] z-50 backdrop-blur-md ${scheme.card} border-r ${scheme.border} transform transition-all duration-300 ease-in-out ${isAnimating ? 'translate-x-0' : '-translate-x-full'} pointer-events-auto`}
+              className={`fixed top-0 left-0 h-screen w-[80%] sm:w-[300px] z-50 backdrop-blur-md ${scheme.card} border-r ${scheme.border} transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} pointer-events-auto`}
               role="dialog"
               aria-modal="true"
             >

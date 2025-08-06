@@ -191,6 +191,7 @@ export default function SignupClient() {
                 id="address"
                 name="address"
                 type="text"
+                required
                 value={formData.address}
                 onChange={handleChange}
                 className={`mt-1 block w-full rounded-lg border-0 ${scheme.card} py-2 px-4 ${scheme.text} placeholder:${scheme.textSecondary} shadow-sm ring-1 ring-inset ${scheme.border} focus:ring-2 focus:ring-blue-400 transition`}
@@ -204,6 +205,7 @@ export default function SignupClient() {
               <input
                 id="zipCode"
                 name="zipCode"
+                required
                 type="text"
                 value={formData.zipCode}
                 onChange={handleChange}

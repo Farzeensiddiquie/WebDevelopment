@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult, query } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { io, connectedUsers } = require('../server');
 
 const router = express.Router();
 
@@ -96,6 +97,20 @@ router.post('/', [
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Deduplication: check for similar notification in last 5 minutes
+    const now = new Date();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    const duplicate = user.notifications.find(n =>
+      n.type === type &&
+      n.title === title &&
+      (orderId ? n.orderId === orderId : true) &&
+      (productId ? n.productId === productId : true) &&
+      new Date(n.createdAt) > fiveMinutesAgo
+    );
+    if (duplicate) {
+      return res.status(200).json({ success: true, message: 'Duplicate notification skipped', data: duplicate });
+    }
+
     // Create new notification
     const notification = {
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -107,6 +122,11 @@ router.post('/', [
       productId: productId || null,
       createdAt: new Date()
     };
+
+    // Admin notification targeting: only allow admin/superadmin to receive/persist admin notifications
+    if (type === 'admin' && user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only admins can receive admin notifications' });
+    }
 
     // Add to user's notifications (limit to 100 notifications per user)
     user.notifications.unshift(notification);
@@ -124,6 +144,50 @@ router.post('/', [
 
   } catch (error) {
     console.error('Add notification error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   POST /api/notifications/global
+// @desc    Admin sends a global notification to all users
+// @access  Private (Admin only)
+router.post('/global', auth.auth, async (req, res) => {
+  try {
+    const adminUser = await User.findById(req.user.id);
+    if (!adminUser || (adminUser.role !== 'admin' && adminUser.role !== 'superadmin')) {
+      return res.status(403).json({ error: 'Access denied. Admin only.' });
+    }
+    const { title, message } = req.body;
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
+    const notification = {
+      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'admin',
+      title,
+      message,
+      read: false,
+      createdAt: new Date()
+    };
+    // Add notification to all users
+    const users = await User.find({});
+    for (const user of users) {
+      user.notifications.unshift(notification);
+      if (user.notifications.length > 100) {
+        user.notifications = user.notifications.slice(0, 100);
+      }
+      await user.save();
+      // Emit real-time notification if user is connected
+      const userId = user._id.toString();
+      if (connectedUsers[userId]) {
+        connectedUsers[userId].forEach(socketId => {
+          io.to(socketId).emit('user_notification', notification);
+        });
+      }
+    }
+    res.json({ success: true, message: 'Global notification sent to all users' });
+  } catch (error) {
+    console.error('Global notification error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -185,6 +249,24 @@ router.put('/read-all', auth.auth, async (req, res) => {
 
   } catch (error) {
     console.error('Mark all notifications as read error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/notifications/all
+// @desc    Permanently delete all notifications for the current user
+// @access  Private
+router.delete('/all', auth.auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    user.notifications = [];
+    await user.save();
+    res.json({ success: true, message: 'All notifications deleted' });
+  } catch (error) {
+    console.error('Delete all notifications error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

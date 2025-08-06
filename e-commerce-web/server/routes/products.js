@@ -149,7 +149,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', [
   auth.auth,
   auth.admin,
-  uploadSingle,
+  uploadMultiple, // allow multiple images
   body('name', 'Product name is required').not().isEmpty().trim().escape(),
   body('description', 'Product description is required').not().isEmpty().trim(),
   body('price', 'Price is required and must be positive').isFloat({ min: 0 }),
@@ -164,15 +164,26 @@ router.post('/', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Handle image upload
-    let imageUrl = null;
-    if (req.file) {
-      imageUrl = getFileUrl(req.file.filename, req);
+    // Handle multiple image uploads (max 4)
+    let images = [];
+    if (req.files && req.files.length > 0) {
+      images = req.files.slice(0, 4).map(file => getFileUrl(file.filename, req));
+    } else if (req.body.images) {
+      // If images are sent as URLs (e.g., from form), parse them
+      images = Array.isArray(req.body.images) ? req.body.images.slice(0, 4) : [req.body.images];
+    }
+
+    // For backward compatibility, set main image as first image or fallback
+    let imageUrl = images[0] || null;
+    if (!imageUrl && req.body.image) {
+      imageUrl = req.body.image;
+      images = [imageUrl];
     }
 
     const productData = {
       ...req.body,
-      image: imageUrl || req.body.image, // Use uploaded image or fallback to URL
+      image: imageUrl, // main image
+      images, // array of images
       price: parseFloat(req.body.price),
       stock: parseInt(req.body.stock),
       oldPrice: req.body.oldPrice ? parseFloat(req.body.oldPrice) : null
@@ -180,6 +191,7 @@ router.post('/', [
 
     const product = new Product(productData);
     await product.save();
+    console.log('Product saved:', product);
 
     res.status(201).json({
       success: true,
@@ -202,7 +214,7 @@ router.post('/', [
 router.put('/:id', [
   auth.auth,
   auth.admin,
-  uploadSingle,
+  uploadMultiple, // allow multiple images
   body('name').optional().trim().escape(),
   body('description').optional().trim(),
   body('price').optional().isFloat({ min: 0 }),
@@ -223,19 +235,27 @@ router.put('/:id', [
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // Handle image upload
-    let imageUrl = existingProduct.image; // Keep existing image by default
-    if (req.file) {
-      // Delete old image if it exists and is not a URL
-      if (existingProduct.image && !existingProduct.image.startsWith('http')) {
-        deleteFile(existingProduct.image.split('/').pop());
-      }
-      imageUrl = getFileUrl(req.file.filename, req);
+    // Handle multiple image uploads (max 4)
+    let images = existingProduct.images || [];
+    if (req.files && req.files.length > 0) {
+      // Optionally delete old images if needed
+      images = req.files.slice(0, 4).map(file => getFileUrl(file.filename, req));
+    } else if (req.body.images) {
+      images = Array.isArray(req.body.images) ? req.body.images.slice(0, 4) : [req.body.images];
+    }
+
+    // For backward compatibility, set main image as first image or fallback
+    let imageUrl = images[0] || existingProduct.image;
+    if (req.body.image) {
+      imageUrl = req.body.image;
+      if (!images.includes(imageUrl)) images.unshift(imageUrl);
+      images = images.slice(0, 4);
     }
 
     const updateData = {
       ...req.body,
-      image: imageUrl
+      image: imageUrl,
+      images,
     };
 
     // Convert numeric fields

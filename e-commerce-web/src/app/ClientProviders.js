@@ -13,23 +13,23 @@ import { ProductProvider } from "../context/ProductContext";
 export default function ClientProviders({ children }) {
   return (
     <ThemeProvider>
-      <NProgressProvider>
-        <UserProvider>
-          <CartProvider>
-            <NotificationProvider>
-              <OrderProvider>
-                <WishlistProvider>
-                  <ToastProvider>
+      <ToastProvider>
+        <NProgressProvider>
+          <UserProvider>
+            <CartProvider>
+              <NotificationProvider>
+                <OrderProvider>
+                  <WishlistProvider>
                     <ProductProvider>
                       {children}
                     </ProductProvider>
-                  </ToastProvider>
-                </WishlistProvider>
-              </OrderProvider>
-            </NotificationProvider>
-          </CartProvider>
-        </UserProvider>
-      </NProgressProvider>
+                  </WishlistProvider>
+                </OrderProvider>
+              </NotificationProvider>
+            </CartProvider>
+          </UserProvider>
+        </NProgressProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 } 

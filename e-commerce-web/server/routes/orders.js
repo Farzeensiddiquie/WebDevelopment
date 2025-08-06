@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
 const User = require('../models/User');
+const { io, connectedUsers } = require('../server');
 
 // Get all orders for the authenticated user
 router.get('/', auth, async (req, res) => {
@@ -88,6 +89,32 @@ router.delete('/clear-completed', auth, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/orders/clear-completed/self
+// @desc    Clear delivered and cancelled orders for the current user
+// @access  Private
+router.delete('/clear-completed/self', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const originalLength = user.orders.length;
+    user.orders = user.orders.filter(order =>
+      order.status !== 'delivered' && order.status !== 'cancelled'
+    );
+    const deletedCount = originalLength - user.orders.length;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Cleared ${deletedCount} completed orders`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('Clear self completed orders error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get a specific order by ID
 router.get('/:orderId', auth, async (req, res) => {
   try {
@@ -144,11 +171,13 @@ router.post('/', auth, async (req, res) => {
       id: req.body.id || `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId: user._id,
       items: items.map(item => ({
-        productId: item.id || item._id,
+        productId: item.productId || item.id || item._id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        image: item.image
+        image: item.image,
+        size: item.size,
+        color: item.color
       })),
       shipping: {
         firstName: shipping.firstName || user.name?.split(' ')[0] || '',
@@ -186,6 +215,42 @@ router.post('/', auth, async (req, res) => {
     }
     user.orders.unshift(order); // Add to beginning of array
     await user.save();
+
+    // Emit real-time notification to all admins
+    const notification = {
+      type: 'order',
+      title: 'New Order Received',
+      message: `Order #${order.id.slice(-8)} has been placed by ${user.email}. Total: $${order.totals?.total?.toFixed(2) || '0.00'}`,
+      orderId: order.id,
+      userEmail: user.email,
+      orderTotal: order.totals?.total?.toFixed(2) || '0.00',
+      orderItems: order.items?.length || 0,
+      timestamp: new Date().toISOString()
+    };
+    // Send to all connected admins (multi-socket support) and persist notification
+    const adminUsers = await User.find({ $or: [{ role: 'admin' }, { role: 'superadmin' }] });
+    for (const admin of adminUsers) {
+      const adminId = admin._id.toString();
+      if (connectedUsers[adminId]) {
+        connectedUsers[adminId].forEach(socketId => {
+          io.to(socketId).emit('admin_notification', notification);
+        });
+      }
+      // Persist notification in admin's notifications array
+      admin.notifications.unshift({
+        id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'order',
+        title: notification.title,
+        message: notification.message,
+        orderId: notification.orderId,
+        read: false,
+        createdAt: new Date()
+      });
+      if (admin.notifications.length > 100) {
+        admin.notifications = admin.notifications.slice(0, 100);
+      }
+      await admin.save();
+    }
 
     res.status(201).json(order);
   } catch (error) {
@@ -228,6 +293,21 @@ router.put('/admin/:orderId/status', auth, async (req, res) => {
     user.orders[orderIndex].status = status;
     user.orders[orderIndex].updatedAt = new Date();
     await user.save();
+
+    // Emit real-time notification to the specific user (multi-socket support)
+    const notification = {
+      type: status,
+      title: `Order ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      message: `Your order #${user.orders[orderIndex].id.slice(-8)} has been ${status}`,
+      orderId: user.orders[orderIndex].id,
+      timestamp: new Date().toISOString()
+    };
+    const userId = user._id.toString();
+    if (connectedUsers[userId]) {
+      connectedUsers[userId].forEach(socketId => {
+        io.to(socketId).emit('user_notification', notification);
+      });
+    }
 
     res.json(user.orders[orderIndex]);
   } catch (error) {

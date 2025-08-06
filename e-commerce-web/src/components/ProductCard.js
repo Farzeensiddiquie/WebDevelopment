@@ -19,6 +19,20 @@ export default function ProductCard({ product }) {
   const { getCurrentScheme } = useTheme();
   const scheme = getCurrentScheme();
 
+  // Helper to get the first valid image URL
+  const getProductImageUrl = () => {
+    if (Array.isArray(product.images) && product.images.length > 0) {
+      // Find the first valid image URL (string, not File object)
+      const validUrl = product.images.find(img => typeof img === 'string' && (img.startsWith('/') || img.startsWith('http')));
+      if (validUrl) return validUrl;
+    }
+    // Fallback to product.image if it's a valid URL
+    if (typeof product.image === 'string' && (product.image.startsWith('/') || product.image.startsWith('http'))) {
+      return product.image;
+    }
+    return null;
+  };
+
   const handleWishlistToggle = (e) => {
     e.stopPropagation();
     const productId = product._id || product.id;
@@ -58,9 +72,9 @@ export default function ProductCard({ product }) {
       onMouseLeave={() => setHovered(false)}
     >
       <div className={`w-full h-48 mb-4 rounded-lg overflow-hidden ${scheme.card} flex items-center justify-center relative`}>
-        {product.image ? (
+        {getProductImageUrl() ? (
           <Image
-            src={product.image}
+            src={getProductImageUrl()}
             alt={product.name}
             width={300}
             height={300}
@@ -84,7 +98,7 @@ export default function ProductCard({ product }) {
             {/* Add to Cart + Icon */}
             <button
               className={`absolute top-3 right-3 ${scheme.accent} text-white rounded-full w-8 h-8 flex items-center justify-center text-xl shadow hover:opacity-90 z-10 border ${scheme.border}`}
-              onClick={handleAddToCart}
+              onClick={e => { e.stopPropagation(); handleAddToCart(); }}
               title="Add to cart"
             >
               <Plus className="w-4 h-4" />

@@ -9,14 +9,14 @@ import { ArrowLeft, CreditCard, Truck, Shield, Package, DollarSign } from 'lucid
 import { useRouter } from 'next/navigation';
 import UserContext from '../../context/UserContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useUser } from '../../context/UserContext';
 
 export default function CheckoutClient() {
   const { cartItems, removeFromCart, updateQuantity, clearCart } = useCart();
   const { showToast } = useToast();
   const { addOrder } = useOrders();
   const router = useRouter();
-  const user = useContext(UserContext);
-  const isSignedIn = user && !user.isGuest;
+  const { user, isAuthenticated, loading } = useUser();
   
   const [shippingInfo, setShippingInfo] = useState({
     firstName: '',
@@ -44,6 +44,16 @@ export default function CheckoutClient() {
   const [paymentMethod, setPaymentMethod] = useState('prepayment'); // 'prepayment' or 'cod'
   const [isProcessing, setIsProcessing] = useState(false);
 
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.replace('/login?redirect=/checkout');
+    }
+  }, [isAuthenticated, loading, router]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   // Load user profile and saved address on mount
   useEffect(() => {
     let profile = null;
@@ -57,20 +67,20 @@ export default function CheckoutClient() {
         addressData = JSON.parse(saved);
       } catch {}
     }
-    if (isSignedIn && profile) {
+    if (user) {
       setShippingInfo(prev => ({
         ...prev,
-        firstName: profile.name?.split(' ')[0] || '',
-        lastName: profile.name?.split(' ').slice(1).join(' ') || '',
-        email: profile.email || '',
-        phone: profile.phone || '',
+        firstName: user.name?.split(' ')[0] || '',
+        lastName: user.name?.split(' ').slice(1).join(' ') || '',
+        email: user.email || '',
+        phone: user.phone || '',
         address: addressData.address || '',
         zipCode: addressData.zipCode || '',
       }));
     } else if (saved) {
       setShippingInfo(addressData);
     }
-  }, [isSignedIn]);
+  }, [user]);
 
   // Calculate totals
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -208,7 +218,7 @@ export default function CheckoutClient() {
                 Shipping Information
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
-                {isSignedIn ? null : (
+                {user ? null : (
                   <>
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${scheme.textSecondary}`}>First Name</label>

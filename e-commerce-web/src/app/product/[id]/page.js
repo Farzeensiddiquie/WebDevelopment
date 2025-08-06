@@ -61,7 +61,9 @@ export default function ProductPage() {
         // Handle the response data
         const productData = productResponse.data || productResponse; // Extract data from response
         setProduct(productData);
-        setSelectedImage(productData.image);
+        // Set initial selected image to first available image
+        const imagesArr = (productData.images && productData.images.length > 0) ? productData.images : [productData.image];
+        setSelectedImage(imagesArr[0]);
 
         // Fetch reviews and update product rating
         try {
@@ -283,6 +285,9 @@ export default function ProductPage() {
     }
   };
 
+  // Helper: get all images for gallery
+  const galleryImages = (product.images && product.images.length > 0) ? product.images : [product.image];
+
   return (
     <main className={`min-h-screen ${scheme.background} px-4 py-6 sm:px-6 lg:px-8`}>
       <div className="max-w-7xl mx-auto">
@@ -293,7 +298,7 @@ export default function ProductPage() {
             <div className="hidden lg:flex gap-4">
               {/* Thumbnails */}
               <div className="flex flex-col gap-2">
-                {[product.image, product.image, product.image, product.image].map((img, i) => (
+                {galleryImages.map((img, i) => (
                   <div
                     key={i}
                     className={`w-20 h-20 ${scheme.card} rounded-lg overflow-hidden cursor-pointer border-2 ${selectedImage === img ? scheme.accent : 'border-transparent'} hover:${scheme.hover}`}
@@ -370,7 +375,7 @@ export default function ProductPage() {
                 )}
               </div>
               <div className="flex gap-2">
-                {[product.image, product.image, product.image, product.image].map((img, i) => (
+                {galleryImages.map((img, i) => (
                   <div
                     key={i}
                     className={`w-20 h-20 ${scheme.card} rounded-lg overflow-hidden cursor-pointer border-2 ${selectedImage === img ? scheme.accent : 'border-transparent'} hover:${scheme.hover}`}

@@ -5,7 +5,7 @@ import { useUser } from '../../context/UserContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { productAPI, orderAPI, userAPI } from '../../utils/api';
+import { productAPI, orderAPI, userAPI, notificationAPI } from '../../utils/api';
 import ProgressLink from '../../components/ProgressLink';
 import { Package, Users, Settings, Clock, CheckCircle, Truck, XCircle, Bell, Trash2, ArrowLeft } from 'lucide-react';
 
@@ -30,12 +30,27 @@ export default function AdminDashboard() {
     name: '',
     description: '',
     price: '',
+    oldPrice: '',
     brand: '',
     category: 'men',
-    stock: ''
+    stock: '',
+    sizes: [],
+    colors: [],
+    sku: ''
   });
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  // Replace single image state with multiple images
+  const [selectedImages, setSelectedImages] = useState([]); // Array of File or string (for existing images)
+  const [imagePreviews, setImagePreviews] = useState([]); // Array of preview URLs
+
+  // Global notification state
+  const [globalNotifTitle, setGlobalNotifTitle] = useState('');
+  const [globalNotifMessage, setGlobalNotifMessage] = useState('');
+  const [sendingGlobalNotif, setSendingGlobalNotif] = useState(false);
+
+  // Add state for color and size inputs (move to top of component)
+  const [sizeInput, setSizeInput] = useState('');
+  const [colorNameInput, setColorNameInput] = useState('');
+  const [colorHexInput, setColorHexInput] = useState('#000000');
 
   // Show loading state if not initialized
   if (!initialized) {
@@ -148,89 +163,87 @@ export default function AdminDashboard() {
   };
 
   const updateOrderStatus = async (orderId, newStatus, userEmail) => {
-    try {
-      // Find the order first
-      const order = orders.find(o => o.id === orderId);
-      if (!order) {
-        showToast('Order not found', 'error');
-        return;
-      }
+    // Find the order first
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+      showToast('Order not found', 'error');
+      return;
+    }
 
-      // Try to update via API first (for authenticated users' orders)
-      try {
-        await orderAPI.updateOrderStatusAdmin(orderId, newStatus);
-      } catch (apiError) {
-        // If API fails (order might be in localStorage), just update locally
-        console.log('API update failed, updating locally:', apiError.message);
-        if (apiError.message?.includes('Order not found')) {
-          showToast('Order not found in database. This order may have been created locally.', 'error');
-          return;
-        }
-      }
-      
-      // Update local state regardless of API success
-      setOrders(prev => 
-        prev.map(order => 
-          order.id === orderId 
-            ? { ...order, status: newStatus, updatedAt: new Date().toISOString() }
-            : order
-        )
-      );
+    // Save previous status for possible revert
+    const previousStatus = order.status;
+    const previousUpdatedAt = order.updatedAt;
+
+    // Optimistically update local state
+    setOrders(prev =>
+      prev.map(order =>
+        order.id === orderId
+          ? { ...order, status: newStatus, updatedAt: new Date().toISOString() }
+          : order
+      )
+    );
+
+    try {
+      await orderAPI.updateOrderStatusAdmin(orderId, newStatus);
+      // Optionally, re-fetch orders for consistency
+      // await loadOrders();
 
       // Add notification for the user
-      if (order) {
-        const notification = {
-          type: newStatus === 'cancelled' ? 'cancelled' : 'order',
-          title: `Order ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
-          message: `Your order #${orderId.slice(-8)} has been ${newStatus}`,
-          orderId: orderId,
-          userEmail: userEmail
-        };
-        
-        // Store notification in localStorage for the user
+      const notification = {
+        type: newStatus === 'cancelled' ? 'cancelled' : 'order',
+        title: `Order ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+        message: `Your order #${orderId.slice(-8)} has been ${newStatus}`,
+        orderId: orderId,
+        userEmail: userEmail
+      };
+      // Store notification in localStorage for the user
+      try {
+        const userNotificationsKey = `notifications_${userEmail}`;
+        let userNotifications = [];
         try {
-          const userNotificationsKey = `notifications_${userEmail}`;
-          let userNotifications = [];
-          
-          try {
-            const savedNotifications = localStorage.getItem(userNotificationsKey);
-            if (savedNotifications) {
-              const parsed = JSON.parse(savedNotifications);
-              if (Array.isArray(parsed)) {
-                userNotifications = parsed;
-              } else {
-                localStorage.removeItem(userNotificationsKey);
-              }
+          const savedNotifications = localStorage.getItem(userNotificationsKey);
+          if (savedNotifications) {
+            const parsed = JSON.parse(savedNotifications);
+            if (Array.isArray(parsed)) {
+              userNotifications = parsed;
+            } else {
+              localStorage.removeItem(userNotificationsKey);
             }
-          } catch (parseError) {
-            console.error('Failed to parse user notifications:', parseError);
-            localStorage.removeItem(userNotificationsKey);
           }
-          
-          userNotifications.unshift({
-            id: Date.now(),
-            ...notification,
-            timestamp: new Date().toISOString(),
-            read: false
-          });
-          localStorage.setItem(userNotificationsKey, JSON.stringify(userNotifications));
-        } catch (error) {
-          console.error('Failed to save user notification:', error);
+        } catch (parseError) {
+          console.error('Failed to parse user notifications:', parseError);
+          localStorage.removeItem(userNotificationsKey);
         }
+        userNotifications.unshift({
+          id: Date.now(),
+          ...notification,
+          timestamp: new Date().toISOString(),
+          read: false
+        });
+        localStorage.setItem(userNotificationsKey, JSON.stringify(userNotifications));
+      } catch (error) {
+        console.error('Failed to save user notification:', error);
       }
 
-      // Also notify admins about the status change
-      addNotification({
-        type: 'order',
-        title: `Order Status Updated`,
-        message: `Order #${orderId.slice(-8)} status changed to ${newStatus} by admin`,
-        orderId: orderId
-      });
+      // Removed: addNotification for admins
+      // addNotification({
+      //   type: 'order',
+      //   title: `Order Status Updated`,
+      //   message: `Order #${orderId.slice(-8)} status changed to ${newStatus} by admin`,
+      //   orderId: orderId
+      // });
 
       showToast(`Order status updated to ${newStatus}`, 'success');
     } catch (error) {
+      // Revert optimistic update on error
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId
+            ? { ...order, status: previousStatus, updatedAt: previousUpdatedAt }
+            : order
+        )
+      );
       console.error('Failed to update order status:', error);
-      // Show more specific error messages
       if (error.message?.includes('Order not found')) {
         showToast('Order not found in database. This order may have been created locally.', 'error');
       } else if (error.message?.includes('Access denied')) {
@@ -454,12 +467,7 @@ export default function AdminDashboard() {
 
     try {
       const response = await orderAPI.clearCompletedOrders();
-      
-      // Reload orders from backend to get updated data
-      await loadOrders();
-      
       showToast(`Cleared ${response.deletedCount} completed orders`, 'success');
-      
       // Add notification for the action
       addNotification({
         type: 'admin',
@@ -467,21 +475,29 @@ export default function AdminDashboard() {
         message: `Admin cleared ${response.deletedCount} completed orders`,
         timestamp: new Date().toISOString()
       });
+      // Always reload orders after clearing
+      await loadOrders();
     } catch (error) {
       console.error('Failed to clear completed orders:', error);
       showToast('Failed to clear completed orders', 'error');
+      // Still try to reload orders to sync UI
+      await loadOrders();
     }
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedImage(file);
-      
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-    }
+    const files = Array.from(e.target.files).slice(0, 4);
+    setSelectedImages(files);
+    setImagePreviews(files.map(file => URL.createObjectURL(file)));
+  };
+
+  const handleRemoveImage = (index) => {
+    const newImages = [...selectedImages];
+    const newPreviews = [...imagePreviews];
+    newImages.splice(index, 1);
+    newPreviews.splice(index, 1);
+    setSelectedImages(newImages);
+    setImagePreviews(newPreviews);
   };
 
   const handleSubmit = async (e) => {
@@ -491,14 +507,18 @@ export default function AdminDashboard() {
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
-        stock: parseInt(formData.stock)
+        oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : undefined,
+        stock: parseInt(formData.stock),
+        sizes: formData.sizes,
+        colors: formData.colors,
+        sku: formData.sku || undefined
       };
 
       if (editingProduct) {
-        await productAPI.update(editingProduct._id, productData, selectedImage);
+        await productAPI.update(editingProduct._id, productData, selectedImages);
         showToast('Product updated successfully', 'success');
       } else {
-        await productAPI.create(productData, selectedImage);
+        await productAPI.create(productData, selectedImages);
         showToast('Product created successfully', 'success');
       }
 
@@ -507,12 +527,16 @@ export default function AdminDashboard() {
         name: '',
         description: '',
         price: '',
+        oldPrice: '',
         brand: '',
         category: 'men',
-        stock: ''
+        stock: '',
+        sizes: [],
+        colors: [],
+        sku: ''
       });
-      setSelectedImage(null);
-      setImagePreview('');
+      setSelectedImages([]);
+      setImagePreviews([]);
       setEditingProduct(null);
       setShowAddForm(false);
       loadProducts();
@@ -527,12 +551,18 @@ export default function AdminDashboard() {
       name: product.name,
       description: product.description,
       price: product.price.toString(),
+      oldPrice: product.oldPrice ? product.oldPrice.toString() : '',
       brand: product.brand,
       category: product.category,
-      stock: product.stock.toString()
+      stock: product.stock.toString(),
+      sizes: product.sizes || [],
+      colors: product.colors || [],
+      sku: product.sku || ''
     });
-    setImagePreview(product.image);
-    setSelectedImage(null);
+    // product.images is assumed to be an array; fallback to [product.image] for backward compatibility
+    const images = product.images && product.images.length ? product.images : (product.image ? [product.image] : []);
+    setSelectedImages(images);
+    setImagePreviews(images);
     setShowAddForm(true);
   };
 
@@ -553,14 +583,44 @@ export default function AdminDashboard() {
       name: '',
       description: '',
       price: '',
+      oldPrice: '',
       brand: '',
       category: 'men',
-      stock: ''
+      stock: '',
+      sizes: [],
+      colors: [],
+      sku: ''
     });
-    setSelectedImage(null);
-    setImagePreview('');
+    setSelectedImages([]);
+    setImagePreviews([]);
     setEditingProduct(null);
     setShowAddForm(false);
+  };
+
+  const handleSendGlobalNotification = async (e) => {
+    e.preventDefault();
+    if (!globalNotifTitle.trim() || !globalNotifMessage.trim()) {
+      showToast('Title and message are required', 'error');
+      return;
+    }
+    setSendingGlobalNotif(true);
+    try {
+      const response = await notificationAPI.sendGlobalNotification({
+        title: globalNotifTitle,
+        message: globalNotifMessage,
+      });
+      if (response && response.success) {
+        showToast('Global notification sent to all users', 'success');
+        setGlobalNotifTitle('');
+        setGlobalNotifMessage('');
+      } else {
+        showToast(response?.error || 'Failed to send global notification', 'error');
+      }
+    } catch (error) {
+      showToast('Failed to send global notification', 'error');
+    } finally {
+      setSendingGlobalNotif(false);
+    }
   };
 
   if (loading || !initialized) {
@@ -604,6 +664,38 @@ export default function AdminDashboard() {
             </ProgressLink>
           </div>
         </div>
+
+        {/* Global Notification Form (Admins only) */}
+        {user && (user.role === 'admin' || user.role === 'superadmin') && (
+          <div className="mb-8 p-6 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold mb-2 text-yellow-800">Send Global Notification to All Users</h3>
+            <form onSubmit={handleSendGlobalNotification} className="flex flex-col gap-2 md:flex-row md:items-end">
+              <input
+                type="text"
+                placeholder="Notification Title"
+                value={globalNotifTitle}
+                onChange={e => setGlobalNotifTitle(e.target.value)}
+                className="flex-1 px-3 py-2 rounded border border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Notification Message"
+                value={globalNotifMessage}
+                onChange={e => setGlobalNotifMessage(e.target.value)}
+                className="flex-1 px-3 py-2 rounded border border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                required
+              />
+              <button
+                type="submit"
+                disabled={sendingGlobalNotif}
+                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition font-semibold"
+              >
+                {sendingGlobalNotif ? 'Sending...' : 'Send Notification'}
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -747,6 +839,20 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${scheme.text} mb-1`}>
+                        Old Price (for sales, optional)
+                      </label>
+                      <input
+                        type="number"
+                        name="oldPrice"
+                        value={formData.oldPrice}
+                        onChange={e => setFormData({ ...formData, oldPrice: e.target.value })}
+                        step="0.01"
+                        min="0"
+                        className={`w-full rounded-lg border-0 ${scheme.card} py-2 px-4 ${scheme.text} placeholder:${scheme.textSecondary} shadow-sm ring-1 ring-inset ${scheme.border} focus:ring-2 focus:ring-blue-400 transition`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${scheme.text} mb-1`}>
                         Stock
                       </label>
                       <input
@@ -777,23 +883,112 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <label className={`block text-sm font-medium ${scheme.text} mb-1`}>
-                        Product Image
+                        SKU (optional, unique)
+                      </label>
+                      <input
+                        type="text"
+                        name="sku"
+                        value={formData.sku}
+                        onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                        className={`w-full rounded-lg border-0 ${scheme.card} py-2 px-4 ${scheme.text} placeholder:${scheme.textSecondary} shadow-sm ring-1 ring-inset ${scheme.border} focus:ring-2 focus:ring-blue-400 transition`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${scheme.text} mb-1`}>
+                        Sizes (comma separated, e.g. S,M,L)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={sizeInput}
+                          onChange={e => setSizeInput(e.target.value)}
+                          placeholder="Add size"
+                          className={`flex-1 rounded-lg border-0 ${scheme.card} py-2 px-4 ${scheme.text} placeholder:${scheme.textSecondary} shadow-sm ring-1 ring-inset ${scheme.border}`}
+                        />
+                        <button type="button" onClick={() => {
+                          if (sizeInput && !formData.sizes.includes(sizeInput)) {
+                            setFormData({ ...formData, sizes: [...formData.sizes, sizeInput] });
+                            setSizeInput('');
+                          }
+                        }} className={`${scheme.accent} ${scheme.text} px-3 py-1 rounded`}>Add</button>
+                      </div>
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {formData.sizes.map((size, idx) => (
+                          <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs flex items-center gap-1">
+                            {size}
+                            <button type="button" onClick={() => setFormData({ ...formData, sizes: formData.sizes.filter(s => s !== size) })} className="ml-1 text-red-500">&times;</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${scheme.text} mb-1`}>
+                        Colors (name + hex, e.g. Red #ff0000)
+                      </label>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={colorNameInput}
+                          onChange={e => setColorNameInput(e.target.value)}
+                          placeholder="Color name"
+                          className={`flex-1 rounded-lg border-0 ${scheme.card} py-2 px-4 ${scheme.text} placeholder:${scheme.textSecondary} shadow-sm ring-1 ring-inset ${scheme.border}`}
+                        />
+                        <input
+                          type="color"
+                          value={colorHexInput}
+                          onChange={e => setColorHexInput(e.target.value)}
+                          className="w-10 h-10 p-0 border-0"
+                        />
+                        <button type="button" onClick={() => {
+                          if (colorNameInput && colorHexInput) {
+                            setFormData({ ...formData, colors: [...formData.colors, { name: colorNameInput, hex: colorHexInput }] });
+                            setColorNameInput('');
+                            setColorHexInput('#000000');
+                          }
+                        }} className={`${scheme.accent} ${scheme.text} px-3 py-1 rounded`}>Add</button>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {formData.colors.map((color, idx) => (
+                          <span key={idx} className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs flex items-center gap-1">
+                            {color.name} <span style={{ background: color.hex, width: 16, height: 16, display: 'inline-block', borderRadius: 4, marginLeft: 4 }}></span>
+                            <button type="button" onClick={() => setFormData({ ...formData, colors: formData.colors.filter((c, i) => i !== idx) })} className="ml-1 text-red-500">&times;</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium ${scheme.text} mb-1`}>
+                        Product Images (up to 4)
                       </label>
                       <input
                         type="file"
-                        name="image"
+                        name="images"
                         accept="image/*"
+                        multiple
                         onChange={handleImageChange}
-                        required={!editingProduct} // Required for new products, optional for editing
+                        required={!editingProduct && selectedImages.length === 0}
                         className={`w-full rounded-lg border-0 ${scheme.card} py-2 px-4 ${scheme.text} placeholder:${scheme.textSecondary} shadow-sm ring-1 ring-inset ${scheme.border} focus:ring-2 focus:ring-blue-400 transition`}
+                        max={4}
                       />
-                      {imagePreview && (
-                        <div className="mt-2">
-                          <img
-                            src={imagePreview}
-                            alt="Preview"
-                            className="w-20 h-20 object-cover rounded-lg border"
-                          />
+                      {imagePreviews.length > 0 && (
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          {imagePreviews.map((preview, idx) => (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={preview}
+                                alt={`Preview ${idx + 1}`}
+                                className="w-20 h-20 object-cover rounded-lg border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(idx)}
+                                className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-80 hover:opacity-100 transition"
+                                title="Remove image"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

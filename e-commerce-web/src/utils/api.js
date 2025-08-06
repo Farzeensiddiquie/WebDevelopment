@@ -231,42 +231,49 @@ export const productAPI = {
     return await apiRequest(`/products/${id}`);
   },
 
-  create: async (productData, imageFile = null) => {
+  create: async (productData, images = []) => {
     const formData = new FormData();
-    
     // Add product data
     Object.keys(productData).forEach(key => {
       if (productData[key] !== null && productData[key] !== undefined) {
         formData.append(key, productData[key]);
       }
     });
-    
-    // Add image file if provided
-    if (imageFile) {
-      formData.append('image', imageFile);
+    // Add images (array or single)
+    if (Array.isArray(images)) {
+      images.forEach(img => {
+        // Only append File objects (not URLs from existing images)
+        if (img instanceof File) {
+          formData.append('images', img);
+        }
+      });
+    } else if (images instanceof File) {
+      formData.append('images', images);
     }
-
     return await apiRequest('/products', {
       method: 'POST',
       body: formData,
     });
   },
 
-  update: async (id, productData, imageFile = null) => {
+  update: async (id, productData, images = []) => {
     const formData = new FormData();
-    
     // Add product data
     Object.keys(productData).forEach(key => {
       if (productData[key] !== null && productData[key] !== undefined) {
         formData.append(key, productData[key]);
       }
     });
-    
-    // Add image file if provided
-    if (imageFile) {
-      formData.append('image', imageFile);
+    // Add images (array or single)
+    if (Array.isArray(images)) {
+      images.forEach(img => {
+        if (img instanceof File) {
+          formData.append('images', img);
+        }
+      });
+    } else if (images instanceof File) {
+      formData.append('images', images);
     }
-
     return await apiRequest(`/products/${id}`, {
       method: 'PUT',
       body: formData,
@@ -388,6 +395,12 @@ export const orderAPI = {
 
   clearCompletedOrders: async () => {
     return await apiRequest('/orders/clear-completed', {
+      method: 'DELETE',
+    });
+  },
+
+  clearCompletedOrdersSelf: async () => {
+    return await apiRequest('/orders/clear-completed/self', {
       method: 'DELETE',
     });
   },
@@ -537,9 +550,22 @@ export const notificationAPI = {
       method: 'DELETE',
     });
   },
+  clearAllNotificationsPermanent: async () => {
+    return await apiRequest('/notifications/all', {
+      method: 'DELETE',
+    });
+  },
 
   getUnreadCount: async () => {
     return await apiRequest('/notifications/unread-count');
+  },
+
+  sendGlobalNotification: async ({ title, message }) => {
+    return await apiRequest('/notifications/global', {
+      method: 'POST',
+      body: JSON.stringify({ title, message }),
+      headers: { 'Content-Type': 'application/json' },
+    });
   },
 };
 

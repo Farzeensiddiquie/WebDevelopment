@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { useNotifications } from './NotificationContext';
 import { useUser } from './UserContext';
 import { orderAPI } from '../utils/api';
+import { useToast } from './ToastContext';
 
 const OrderContext = createContext();
 
@@ -12,6 +13,7 @@ export function OrderProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const { addNotification, notifyAdmins } = useNotifications();
   const { user, isAuthenticated } = useUser();
+  const { showToast } = useToast ? useToast() : { showToast: () => {} };
 
   // Get user email from localStorage
   function getUserEmail() {
@@ -82,46 +84,65 @@ export function OrderProvider({ children }) {
     }
   }, [orders, isAuthenticated]);
 
+  // Optimistic add order
   const addOrder = async (orderData) => {
+    setLoading(true);
+    // Map items to have productId as required by backend
+    const orderItems = (orderData.items || []).map(item => ({
+      productId: item.productId || item.id || item._id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      image: item.image,
+      size: item.size,
+      color: item.color
+    }));
+    // Validate required fields
+    if (!orderItems.length) {
+      showToast && showToast('Order must contain at least one item', 'error');
+      setLoading(false);
+      throw new Error('Order must contain at least one item');
+    }
+    if (!orderData.shipping || !orderData.totals) {
+      showToast && showToast('Shipping and totals information is required', 'error');
+      setLoading(false);
+      throw new Error('Shipping and totals information is required');
+    }
+    if (!orderData.payment || !['prepayment', 'cod'].includes(orderData.payment.method)) {
+      showToast && showToast('Invalid payment method. Must be "prepayment" or "cod"', 'error');
+      setLoading(false);
+      throw new Error('Invalid payment method. Must be "prepayment" or "cod"');
+    }
+    // Construct payload to match backend
+    const newOrder = {
+      id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      items: orderItems,
+      shipping: orderData.shipping,
+      payment: orderData.payment,
+      totals: orderData.totals,
+      shippingMethod: orderData.shippingMethod || 'standard',
+      estimatedDelivery: orderData.estimatedDelivery || null,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    // Log payload for debugging
+    console.log('Creating order with payload:', newOrder);
+    // Optimistically update UI
+    setOrders(prevOrders => [newOrder, ...prevOrders]);
     try {
-      setLoading(true);
-      
-      const newOrder = {
-        id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        ...orderData,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
       if (isAuthenticated) {
-        try {
-          // Create order via API
-          const response = await orderAPI.createOrder(newOrder);
-          // Check if response contains an error
-          if (response && response.error) {
-            console.error('Failed to create order via API:', response.error);
-            if (response.error.includes('Authentication required')) {
-              // Create order locally only
-            }
-            setOrders(prevOrders => [newOrder, ...prevOrders]);
-          } else {
-            const createdOrder = response || newOrder;
-            setOrders(prevOrders => [createdOrder, ...prevOrders]);
-          }
-        } catch (error) {
-          console.error('Failed to create order via API:', error);
-          // If API fails (including auth errors), still add to local state to maintain UI consistency
-          if (error.message?.includes('Authentication required')) {
-            // Create order locally only
-          }
-          setOrders(prevOrders => [newOrder, ...prevOrders]);
+        const response = await orderAPI.createOrder(newOrder);
+        console.log('Order API response:', response);
+        if (response && response.error) {
+          showToast && showToast('Failed to create order via API', 'error');
+          setOrders(prevOrders => prevOrders.filter(o => o.id !== newOrder.id));
+          throw new Error(response.error);
+        } else {
+          const createdOrder = response || newOrder;
+          setOrders(prevOrders => [createdOrder, ...prevOrders.filter(o => o.id !== newOrder.id)]);
         }
-      } else {
-        // Add to local state for non-authenticated users
-        setOrders(prevOrders => [newOrder, ...prevOrders]);
       }
-
       // Add notification for new order to user
       addNotification({
         type: 'order',
@@ -129,16 +150,12 @@ export function OrderProvider({ children }) {
         message: `Your order #${newOrder.id.slice(-8)} has been placed and is being processed.`,
         orderId: newOrder.id
       });
-
-      // Notify all admins and superadmins about the new order
-      // Only notify other admins if the current user is not an admin
+      // Notify all admins and superadmins about the new order if the current user is NOT an admin
       const currentUser = user;
       const isCurrentUserAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin');
-      
       if (!isCurrentUserAdmin) {
         const userEmail = getUserEmail();
         const orderTotal = orderData.totals?.total?.toFixed(2) || '0.00';
-        
         notifyAdmins({
           type: 'order',
           title: 'New Order Received',
@@ -149,10 +166,10 @@ export function OrderProvider({ children }) {
           orderItems: orderData.items?.length || 0
         });
       }
-
       return newOrder;
     } catch (error) {
-      console.error('Failed to create order:', error);
+      showToast && showToast('Failed to create order', 'error');
+      setOrders(prevOrders => prevOrders.filter(o => o.id !== newOrder.id));
       throw error;
     } finally {
       setLoading(false);
@@ -164,21 +181,37 @@ export function OrderProvider({ children }) {
       setLoading(true);
       
       if (isAuthenticated) {
-        // Update order via API
-        try {
-          const response = await orderAPI.updateOrderStatus(orderId, status);
-          // Check if response contains an error
-          if (response && response.error) {
-            console.error('Failed to update order status via API:', response.error);
-            if (response.error.includes('Authentication required')) {
+        // Use admin endpoint if user is admin or superadmin
+        if (user && (user.role === 'admin' || user.role === 'superadmin')) {
+          try {
+            const response = await orderAPI.updateOrderStatusAdmin(orderId, status);
+            if (response && response.error) {
+              console.error('Failed to update order status via API:', response.error);
+              if (response.error.includes('Authentication required')) {
+                console.log('Authentication required, updating order status locally only');
+              }
+            }
+          } catch (error) {
+            console.error('Failed to update order status via API:', error);
+            if (error.message?.includes('Authentication required')) {
               console.log('Authentication required, updating order status locally only');
             }
           }
-        } catch (error) {
-          console.error('Failed to update order status via API:', error);
-          // If API fails (including auth errors), still update locally to maintain UI consistency
-          if (error.message?.includes('Authentication required')) {
-            console.log('Authentication required, updating order status locally only');
+        } else {
+          // Normal user: use user endpoint
+          try {
+            const response = await orderAPI.updateOrderStatus(orderId, status);
+            if (response && response.error) {
+              console.error('Failed to update order status via API:', response.error);
+              if (response.error.includes('Authentication required')) {
+                console.log('Authentication required, updating order status locally only');
+              }
+            }
+          } catch (error) {
+            console.error('Failed to update order status via API:', error);
+            if (error.message?.includes('Authentication required')) {
+              console.log('Authentication required, updating order status locally only');
+            }
           }
         }
       }
@@ -225,41 +258,33 @@ export function OrderProvider({ children }) {
 
   const clearCompletedOrders = async () => {
     try {
+      // Optimistically update local state
+      setOrders(prevOrders => prevOrders.filter(order => 
+        order.status !== 'cancelled' && order.status !== 'delivered'
+      ));
       if (isAuthenticated) {
-        // For authenticated users, try to clear from backend
-        try {
-          const response = await orderAPI.clearCompletedOrders();
-          // Check if response contains an error
-          if (response && response.error) {
-            console.error('Failed to clear orders from backend:', response.error);
-            if (response.error.includes('Authentication required')) {
-              console.log('Authentication required, clearing orders locally only');
-            } else if (response.error.includes('Order not found')) {
-              console.log('Orders already cleared from backend or not found');
-            }
+        // Call backend to clear orders
+        if (user && (user.role === 'admin' || user.role === 'superadmin')) {
+          try {
+            await orderAPI.clearCompletedOrders();
+            setTimeout(() => { refreshOrders(); }, 500);
+          } catch (error) {
+            console.error('Failed to clear orders from backend:', error);
           }
-        } catch (error) {
-          console.error('Failed to clear orders from backend:', error);
-          // If backend fails (including auth errors), still clear locally to maintain UI consistency
-          if (error.message?.includes('Authentication required')) {
-            console.log('Authentication required, clearing orders locally only');
-          } else if (error.message?.includes('Order not found')) {
-            console.log('Orders already cleared from backend or not found');
+        } else {
+          try {
+            await orderAPI.clearCompletedOrdersSelf();
+            setTimeout(() => { refreshOrders(); }, 500);
+          } catch (error) {
+            console.error('Failed to clear user orders from backend:', error);
           }
         }
       }
-      
-      // Always clear from local state regardless of API success
-      setOrders(prevOrders => prevOrders.filter(order => 
-        order.status !== 'cancelled' && order.status !== 'delivered'
-      ));
     } catch (error) {
       console.error('Failed to clear completed orders:', error);
-      // Even if there's an error, still clear locally to maintain UI consistency
       setOrders(prevOrders => prevOrders.filter(order => 
         order.status !== 'cancelled' && order.status !== 'delivered'
       ));
-      // Don't throw the error, just log it and continue
       console.log('Cleared orders locally despite error');
     }
   };
@@ -288,7 +313,8 @@ export function OrderProvider({ children }) {
     getOrderById,
     clearCompletedOrders,
     refreshOrders,
-    loading
+    loading,
+    setOrders // Expose setOrders for optimistic UI updates
   };
 
   return (

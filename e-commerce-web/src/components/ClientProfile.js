@@ -16,7 +16,7 @@ export default function ClientProfile() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, isAuthenticated, loading } = useUser();
-  const { orders, updateOrderStatus, clearCompletedOrders, refreshOrders, loading: ordersLoading } = useOrders();
+  const { orders, updateOrderStatus, clearCompletedOrders, refreshOrders, loading: ordersLoading, setOrders } = useOrders();
   const { wishlistItems, removeFromWishlist } = useWishlist();
   const { showToast } = useToast();
   const { getCurrentScheme } = useTheme();
@@ -138,23 +138,17 @@ export default function ClientProfile() {
                 <button
                   onClick={async () => {
                     try {
+                      // Optimistically clear from local state
+                      setOrders(prevOrders => prevOrders.filter(order =>
+                        order.status !== 'cancelled' && order.status !== 'delivered'
+                      ));
                       await clearCompletedOrders();
-                      // Reload orders if user is authenticated
                       if (isAuthenticated) {
-                        try {
-                          await refreshOrders();
-                        } catch (error) {
-                          console.error('Failed to refresh orders:', error);
-                          // Show appropriate message based on error type
-                          if (error.message?.includes('Authentication required')) {
-                            console.log('Authentication required, orders refreshed from localStorage');
-                          }
-                        }
+                        await refreshOrders();
                       }
                       showToast('Cancelled and delivered orders cleared');
                     } catch (error) {
                       console.error('Failed to clear orders:', error);
-                      // Show different messages based on error type
                       if (error.message?.includes('Authentication required')) {
                         showToast('Orders cleared locally. Please log in to sync with server.', 'warning');
                       } else {

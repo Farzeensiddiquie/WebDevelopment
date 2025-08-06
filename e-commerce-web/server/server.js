@@ -8,10 +8,47 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const connectDB = require('./config/database');
 const { handleUploadError } = require('./middleware/upload');
+const http = require('http');
+const socketIo = require('socket.io');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Create HTTP server and Socket.IO instance
+const server = http.createServer(app);
+const io = socketIo(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+
+// Store connected users (by userId, as an array of socket IDs)
+const connectedUsers = {};
+
+io.on('connection', (socket) => {
+  console.log('Socket connected:', socket.id);
+  // Client should emit 'register' with their userId or email after login
+  socket.on('register', (userId) => {
+    console.log('Socket registered for user:', userId, 'socket:', socket.id);
+    if (!connectedUsers[userId]) connectedUsers[userId] = [];
+    if (!connectedUsers[userId].includes(socket.id)) {
+      connectedUsers[userId].push(socket.id);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
+    for (const [userId, sockets] of Object.entries(connectedUsers)) {
+      if (Array.isArray(sockets)) {
+        connectedUsers[userId] = sockets.filter(id => id !== socket.id);
+        if (connectedUsers[userId].length === 0) {
+          delete connectedUsers[userId];
+        }
+      }
+    }
+  });
+});
+
+// Export io and connectedUsers for use in routes
+module.exports.io = io;
+module.exports.connectedUsers = connectedUsers;
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -124,13 +161,13 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
-    
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📦 Database: Connected`);
       console.log(`📁 Uploads: http://localhost:${PORT}/uploads`);
+      console.log(`🔌 Socket.IO enabled on port ${PORT}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

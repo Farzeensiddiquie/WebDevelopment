@@ -48,7 +48,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #667eea, #764ba2, #9a8c98);
+  background: linear-gradient(135deg, #22223b, #4a4e69, #9a8c98);
   border-radius: 6px;
   min-width: 12px;
   max-width: 12px;
@@ -63,7 +63,7 @@ body {
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed, #a855f7);
+  background: linear-gradient(135deg,135deg, #22223b, #4a4e69, #9a8c98);
 
 }
 
@@ -73,7 +73,7 @@ body {
 }
 
 .light ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #7c3aed);
+  background: linear-gradient(135deg,135deg, #22223b, #4a4e69, #9a8c98);
 
   background-clip: content-box;
 }
