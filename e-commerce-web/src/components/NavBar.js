@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import ProgressLink from "./ProgressLink";
 import Image from "next/image";
-import { Menu, X, ShoppingCart, Search, Heart, ChevronDown } from "lucide-react";
+import { Menu, X, ShoppingCart, Search, ChevronDown } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import ProfileMenu from "./ProfileMenu";
 import { useTheme } from '../context/ThemeContext';
@@ -10,8 +10,8 @@ import { useUser } from '../context/UserContext';
 import { usePathname } from 'next/navigation';
 
 function NavBar() {
-  const { cartItems, getCartItemCount } = useCart();
-  const { user, isAdmin, loading, initialized } = useUser();
+  const {  getCartItemCount } = useCart();
+  const { user, isAdmin, initialized } = useUser();
   const cartItemCount = getCartItemCount();
   const { getCurrentScheme } = useTheme();
   const scheme = getCurrentScheme();
