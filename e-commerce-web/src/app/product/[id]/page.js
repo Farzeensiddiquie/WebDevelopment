@@ -288,6 +288,15 @@ export default function ProductPage() {
   // Helper: get all images for gallery
   const galleryImages = (product.images && product.images.length > 0) ? product.images : [product.image];
 
+  // Get colors and sizes from product
+  const productColors = Array.isArray(product.colors) && product.colors.length > 0
+    ? product.colors.map(c => c.hex)
+    : ['#3b3b1f', '#003049', '#1c1c1c']; // fallback if no colors
+
+  const productSizes = Array.isArray(product.sizes) && product.sizes.length > 0
+    ? product.sizes
+    : ['Small', 'Medium', 'Large', 'X-Large']; // fallback if no sizes
+
   return (
     <main className={`min-h-screen ${scheme.background} px-4 py-6 sm:px-6 lg:px-8`}>
       <div className="max-w-7xl mx-auto">
@@ -301,7 +310,7 @@ export default function ProductPage() {
                 {galleryImages.map((img, i) => (
                   <div
                     key={i}
-                    className={`w-20 h-20 ${scheme.card} rounded-lg overflow-hidden cursor-pointer border-2 ${selectedImage === img ? scheme.accent : 'border-transparent'} hover:${scheme.hover}`}
+                    className={`w-20 h-20 ${scheme.card} rounded-lg overflow-hidden cursor-pointer border-2 ${selectedImage === img ? scheme.accent : scheme.border} hover:${scheme.hover}`}
                     onClick={() => setSelectedImage(img)}
                   >
                     {img ? (
@@ -378,7 +387,11 @@ export default function ProductPage() {
                 {galleryImages.map((img, i) => (
                   <div
                     key={i}
-                    className={`w-20 h-20 ${scheme.card} rounded-lg overflow-hidden cursor-pointer border-2 ${selectedImage === img ? scheme.accent : 'border-transparent'} hover:${scheme.hover}`}
+                    className={`w-20 h-20 ${scheme.card} rounded-lg overflow-hidden cursor-pointer
+                      ${selectedImage === img
+                        ? `${scheme.accent} border-4`
+                        : `border-0`
+                      } hover:${scheme.hover}`}
                     onClick={() => setSelectedImage(img)}
                   >
                     {img ? (
@@ -389,7 +402,7 @@ export default function ProductPage() {
                         height={80}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          console.error('Mobile thumbnail failed to load:', img);
+                          console.error('Thumbnail failed to load:', img);
                           e.target.style.display = 'none';
                         }}
                       />
@@ -434,12 +447,13 @@ export default function ProductPage() {
             <div className="mt-6">
               <p className="text-sm font-medium mb-2">Select Color:</p>
               <div className="flex gap-2">
-                {["#3b3b1f", "#003049", "#1c1c1c"].map((color, i) => (
+                {productColors.map((color, i) => (
                   <div
                     key={i}
                     className={`w-7 h-7 rounded-full border-2 cursor-pointer ${selectedColor === color ? scheme.accent : scheme.border}`}
                     style={{ backgroundColor: color }}
                     onClick={() => setSelectedColor(color)}
+                    title={product.colors && product.colors[i] ? product.colors[i].name : color}
                   />
                 ))}
               </div>
@@ -448,7 +462,7 @@ export default function ProductPage() {
             <div className="mt-6">
               <p className="text-sm font-medium mb-2">Choose Size:</p>
               <div className="flex gap-2 flex-wrap">
-                {["Small", "Medium", "Large", "X-Large"].map(size => (
+                {productSizes.map(size => (
                   <button
                     key={size}
                     className={`px-4 py-1 border rounded-full ${selectedSize === size ? `${scheme.accent} text-white` : scheme.border}`}

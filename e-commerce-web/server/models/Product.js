@@ -63,10 +63,7 @@ const productSchema = new mongoose.Schema({
     name: { type: String, required: true },
     hex: { type: String, required: true }
   }],
-  tags: [{
-    type: String,
-    trim: true
-  }],
+  
   isActive: {
     type: Boolean,
     default: true
@@ -84,11 +81,7 @@ const productSchema = new mongoose.Schema({
     min: [0, 'Sale percentage cannot be negative'],
     max: [100, 'Sale percentage cannot be more than 100']
   },
-  sku: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
+ 
   weight: {
     type: Number,
     min: [0, 'Weight cannot be negative']
