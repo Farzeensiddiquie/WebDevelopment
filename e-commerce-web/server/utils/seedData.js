@@ -19,10 +19,11 @@ const seedData = async () => {
     console.log('🗑️ Cleared existing data');
 
     // Create admin user
+    const hashedPassword = await bcrypt.hash('admin123', 10);
     const adminUser = new User({
       name: 'Admin User',
       email: 'admin@ecommerce.com',
-      password: 'admin123',
+      password: hashedPassword,
       role: 'admin',
       isEmailVerified: true,
       isActive: true
@@ -84,4 +85,4 @@ if (require.main === module) {
   seedData();
 }
 
-module.exports = seedData; 
+module.exports = seedData;

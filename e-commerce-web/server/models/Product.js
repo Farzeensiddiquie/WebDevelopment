@@ -56,11 +56,12 @@ const productSchema = new mongoose.Schema({
   },
   sizes: [{
     type: String,
-    enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'One Size']
+    enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'One Size'],
+    required: true
   }],
   colors: [{
-    name: String,
-    hex: String
+    name: { type: String, required: true },
+    hex: { type: String, required: true }
   }],
   tags: [{
     type: String,
@@ -123,4 +124,4 @@ productSchema.virtual('salePrice').get(function() {
 productSchema.set('toJSON', { virtuals: true });
 productSchema.set('toObject', { virtuals: true });
 
-module.exports = mongoose.model('Product', productSchema); 
+module.exports = mongoose.model('Product', productSchema);

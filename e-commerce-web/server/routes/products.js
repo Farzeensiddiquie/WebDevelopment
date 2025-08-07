@@ -180,13 +180,24 @@ router.post('/', [
       images = [imageUrl];
     }
 
+    // After validation, parse sizes and colors
+    let { sizes, colors, ...rest } = req.body;
+    if (typeof sizes === 'string') {
+      try { sizes = JSON.parse(sizes); } catch { sizes = []; }
+    }
+    if (typeof colors === 'string') {
+      try { colors = JSON.parse(colors); } catch { colors = []; }
+    }
+
     const productData = {
-      ...req.body,
+      ...rest,
       image: imageUrl, // main image
       images, // array of images
       price: parseFloat(req.body.price),
       stock: parseInt(req.body.stock),
-      oldPrice: req.body.oldPrice ? parseFloat(req.body.oldPrice) : null
+      oldPrice: req.body.oldPrice ? parseFloat(req.body.oldPrice) : null,
+      sizes, // parsed sizes
+      colors // parsed colors
     };
 
     const product = new Product(productData);
@@ -252,10 +263,21 @@ router.put('/:id', [
       images = images.slice(0, 4);
     }
 
+    // After validation, parse sizes and colors
+    let { sizes, colors, ...rest } = req.body;
+    if (typeof sizes === 'string') {
+      try { sizes = JSON.parse(sizes); } catch { sizes = []; }
+    }
+    if (typeof colors === 'string') {
+      try { colors = JSON.parse(colors); } catch { colors = []; }
+    }
+
     const updateData = {
-      ...req.body,
+      ...rest,
       image: imageUrl,
       images,
+      sizes, // parsed sizes
+      colors // parsed colors
     };
 
     // Convert numeric fields
@@ -430,4 +452,4 @@ router.get('/brands', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

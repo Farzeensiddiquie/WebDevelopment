@@ -52,6 +52,9 @@ export default function AdminDashboard() {
   const [colorNameInput, setColorNameInput] = useState('');
   const [colorHexInput, setColorHexInput] = useState('#000000');
 
+  // Add state for error messages
+  const [formErrors, setFormErrors] = useState([]);
+
   // Show loading state if not initialized
   if (!initialized) {
     return (
@@ -496,27 +499,35 @@ export default function AdminDashboard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setFormErrors([]); // Reset errors
+
     try {
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
         oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : undefined,
         stock: parseInt(formData.stock),
-        sizes: formData.sizes,
-        colors: formData.colors,
+        sizes: JSON.stringify(formData.sizes),   // Send as JSON string
+        colors: JSON.stringify(formData.colors), // Send as JSON string
         sku: formData.sku || undefined
       };
 
+      let response;
       if (editingProduct) {
-        await productAPI.update(editingProduct._id, productData, selectedImages);
-        showToast('Product updated successfully', 'success');
+        response = await productAPI.update(editingProduct._id, productData, selectedImages);
       } else {
-        await productAPI.create(productData, selectedImages);
-        showToast('Product created successfully', 'success');
+        response = await productAPI.create(productData, selectedImages);
       }
 
-      // Reset form
+      // If backend returns validation errors
+      if (response && response.errors) {
+        setFormErrors(response.errors.map(err => err.msg || err.message || 'Validation error'));
+        return;
+      }
+
+      // Success
+      setFormErrors([]);
+      showToast('Product saved successfully', 'success');
       setFormData({
         name: '',
         description: '',
@@ -535,7 +546,7 @@ export default function AdminDashboard() {
       setShowAddForm(false);
       loadProducts();
     } catch (error) {
-      showToast(error.message || 'Failed to save product', 'error');
+      setFormErrors([error.message || 'Failed to save product']);
     }
   };
 
@@ -788,6 +799,16 @@ export default function AdminDashboard() {
                 <h2 className={`text-xl font-semibold ${scheme.text} mb-4`}>
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
                 </h2>
+                {/* Show validation errors */}
+                {formErrors.length > 0 && (
+                  <div className="mb-4">
+                    <ul className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded">
+                      {formErrors.map((err, idx) => (
+                        <li key={idx}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -1447,4 +1468,4 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
-} 
+}
