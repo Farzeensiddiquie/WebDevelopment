@@ -11,8 +11,8 @@ import { useUser } from '../../context/UserContext';
 export default function CartClient() {
   const { getCurrentScheme } = useTheme();
   const scheme = getCurrentScheme();
-  const { cartItems, addToCart, removeFromCart, updateQuantity, loading, operationLoading } = useCart();
-  const { user, isAuthenticated, loading: userLoading } = useUser();
+  const { cartItems, removeFromCart, updateQuantity, loading, operationLoading } = useCart();
+  const { user, loading: userLoading } = useUser();
 
   const subtotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
