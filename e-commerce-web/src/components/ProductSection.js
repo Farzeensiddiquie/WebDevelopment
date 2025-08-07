@@ -27,6 +27,7 @@ export default function ProductSection({ title, products, viewAllRoute = "/", on
       case "newarrivals":
         // Take first 4 products as new arrivals
         filteredProducts = allProducts.slice(0, 4);
+        
         break;
       case "onsale":
         // Take next 4 products as top selling
@@ -43,7 +44,14 @@ export default function ProductSection({ title, products, viewAllRoute = "/", on
   const displayProducts = getDisplayProducts();
 
   return (
-    <section className={`${scheme.card} py-12 px-4`}>
+   <section
+  className={`${
+    productType === 'newarrivals'
+      ? `${scheme.background} `
+      : `${scheme.card}`
+  } py-12 px-4`}
+>
+
       <div className="max-w-7xl mx-auto text-center">
         <h2 className={`text-4xl font-black tracking-tight mb-10 ${scheme.text}`}>{title}</h2>
 

@@ -21,9 +21,9 @@ const colorSchemes = {
   light: {
    
     elegant: {
-      background: 'bg-gradient-to-br from-gray-50 via-slate-50 to-zinc-50',
+      background: 'bg-[#cdd0d1]',
       card: 'bg-gradient-to-br from-white/90 via-gray-50/70 to-white/90',
-      accent: 'bg-gradient-to-r from-gray-600 via-slate-600 to-zinc-600',
+      accent: 'bg-gradient-to-r from-gray-800 via-slate-800 to-zinc-500',
       text: 'text-gray-900',
       textSecondary: 'text-gray-600',
       border: 'border-gray-200',
