@@ -224,17 +224,21 @@ body {
 /* Enhanced focus states */
 /* stylelint-disable-next-line at-rule-no-unknown */
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* blue-500 ring */
+  /* Add ring offset if needed */
 }
 
 /* stylelint-disable-next-line at-rule-no-unknown */
-.focus-ring-blue {
-  @apply focus:ring-blue-500;
+.focus-ring-blue:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* blue-500 */
+  outline: none;
 }
 
 /* stylelint-disable-next-line at-rule-no-unknown */
-.focus-ring-purple {
-  @apply focus:ring-purple-500;
+.focus-ring-purple:focus {
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+  outline: none;
 }
 
 /* Glass morphism effect */

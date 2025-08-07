@@ -587,7 +587,7 @@ export default function ProductPage() {
 
             {activeTab === 'description' && (
               <div>
-                <h3 className={`text-lg font-semibold mb-4 ${scheme.text}`}>Product Description</h3>
+                <h3 className={`${scheme.text} text-lg font-semibold mb-4 `}>Product Description</h3>
                 <p className={`${scheme.textSecondary} leading-relaxed`}>
                   {product.description || 'This product offers excellent quality and comfort. Perfect for everyday wear and special occasions.'}
                 </p>
