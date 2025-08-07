@@ -48,7 +48,7 @@ export default function ProductSection({ title, products, viewAllRoute = "/", on
   className={`${
     productType === 'newarrivals'
       ? `${scheme.background} `
-      : `${scheme.card}`
+      : `${scheme.background}`
   } py-12 px-4`}
 >
 
