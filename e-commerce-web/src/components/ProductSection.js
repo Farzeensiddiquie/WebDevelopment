@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from "next/navigation";
 import ProductCard from "./ProductCard";
 import ProgressLink from "./ProgressLink";
 import { useTheme } from '../context/ThemeContext';

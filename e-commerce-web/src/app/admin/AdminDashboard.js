@@ -7,13 +7,13 @@ import { useToast } from '../../context/ToastContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { productAPI, orderAPI, userAPI, notificationAPI } from '../../utils/api';
 import ProgressLink from '../../components/ProgressLink';
-import { Package, Users, Settings, Clock, CheckCircle, Truck, XCircle, Bell, Trash2, ArrowLeft } from 'lucide-react';
+import { Package, Users, Settings, Clock, CheckCircle, Truck, XCircle, Bell, Trash2 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, isAdmin, isSuperadmin, loading, initialized } = useUser();
   const { getCurrentScheme } = useTheme();
   const { showToast } = useToast();
-  const { addNotification, unreadCount, notifyAdmins, notifications, clearAllNotifications, markAllAsRead, loadNotifications } = useNotifications();
+  const { addNotification, unreadCount,loadNotifications } = useNotifications();
   const router = useRouter();
   const scheme = getCurrentScheme();
 
@@ -225,13 +225,7 @@ export default function AdminDashboard() {
         console.error('Failed to save user notification:', error);
       }
 
-      // Removed: addNotification for admins
-      // addNotification({
-      //   type: 'order',
-      //   title: `Order Status Updated`,
-      //   message: `Order #${orderId.slice(-8)} status changed to ${newStatus} by admin`,
-      //   orderId: orderId
-      // });
+     
 
       showToast(`Order status updated to ${newStatus}`, 'success');
     } catch (error) {

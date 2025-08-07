@@ -23,7 +23,6 @@ const storage = multer.diskStorage({
 
 // File filter for images
 const fileFilter = (req, file, cb) => {
-  // Check file type
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
@@ -51,37 +50,37 @@ const uploadMultiple = upload.array('images', 10);
 const handleUploadError = (error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ 
-        error: 'File too large. Maximum size is 5MB.' 
+      return res.status(400).json({
+        error: 'File too large. Maximum size is 5MB.'
       });
     }
     if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ 
-        error: 'Too many files. Maximum is 10 files.' 
+      return res.status(400).json({
+        error: 'Too many files. Maximum is 10 files.'
       });
     }
     if (error.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ 
-        error: 'Unexpected file field.' 
+      return res.status(400).json({
+        error: 'Unexpected file field.'
       });
     }
   }
-  
+
   if (error.message === 'Only image files are allowed!') {
-    return res.status(400).json({ 
-      error: 'Only image files are allowed!' 
+    return res.status(400).json({
+      error: 'Only image files are allowed!'
     });
   }
-  
+
   next(error);
 };
 
 // Helper function to get file URL with full backend address
 const getFileUrl = (filename, req = null) => {
   if (!filename) return null;
-  
+
   let baseUrl;
-  
+
   if (req) {
     // Use request protocol and host for dynamic URL generation
     const protocol = req.protocol;
@@ -91,14 +90,14 @@ const getFileUrl = (filename, req = null) => {
     // Fallback to environment variable or default
     baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
   }
-  
+
   return `${baseUrl}/uploads/${filename}`;
 };
 
 // Helper function to delete file
 const deleteFile = (filename) => {
   if (!filename) return;
-  
+
   const filePath = path.join(uploadsDir, filename);
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
@@ -112,4 +111,4 @@ module.exports = {
   getFileUrl,
   deleteFile,
   uploadsDir
-}; 
+};
